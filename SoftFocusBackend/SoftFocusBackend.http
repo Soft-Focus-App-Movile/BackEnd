@@ -1,0 +1,6 @@
+@SoftFocusBackend_HostAddress = http://localhost:5007
+
+GET {{SoftFocusBackend_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
