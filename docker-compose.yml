@@ -1,0 +1,48 @@
+# Crear el docker-compose.yml con el contenido correcto
+  cat > docker-compose.yml << 'EOF'
+version: '3.8'
+
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:7.0
+    container_name: softfocus-mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: softfocus_admin
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+      MONGO_INITDB_DATABASE: softfocus_db
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    networks:
+      - softfocus-network
+    restart: always
+    command: --auth
+  
+  # Backend .NET 9
+  softfocus-backend:
+    build: .
+    container_name: softfocus-dotnet
+    ports:
+      - "5000:8080"
+    depends_on:
+      - mongodb
+    env_file:
+      - .env
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+    networks:
+      - softfocus-network
+    restart: always
+
+volumes:
+  mongodb_data:
+    driver: local
+
+networks:
+  softfocus-network:
+    driver: bridge
+  EOF
