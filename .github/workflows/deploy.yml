@@ -1,0 +1,100 @@
+name: Deploy SoftFocus to AWS EC2
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            echo "🚀 Starting SoftFocus deployment..."
+            
+            # Ir al directorio del proyecto
+            cd /home/ec2-user/softfocus
+            
+            # Crear archivo .env desde GitHub Secrets
+            echo "📝 Creating production environment file..."
+            cat > .env << EOF
+            # MongoDB Passwords
+            MONGO_ROOT_PASSWORD=${{ secrets.MONGO_ROOT_PASSWORD }}
+            MONGO_USER_PASSWORD=${{ secrets.MONGO_USER_PASSWORD }}
+            
+            # MongoDB Connection String
+            MongoDbSettings__ConnectionString=mongodb://softfocus_user:${{ secrets.MONGO_USER_PASSWORD }}@mongodb:27017/softfocus_db?authSource=softfocus_db
+            
+            # JWT Secret
+            TokenSettings__SecretKey=${{ secrets.JWT_SECRET_KEY }}
+            
+            # Email Configuration
+            EmailSettings__FromEmail=${{ secrets.EMAIL_FROM }}
+            EmailSettings__SmtpUser=${{ secrets.EMAIL_SMTP_USER }}
+            EmailSettings__SmtpPassword=${{ secrets.EMAIL_SMTP_PASSWORD }}
+            
+            # Cloudinary
+            CloudinarySettings__CloudName=${{ secrets.CLOUDINARY_CLOUD_NAME }}
+            CloudinarySettings__ApiKey=${{ secrets.CLOUDINARY_API_KEY }}
+            CloudinarySettings__ApiSecret=${{ secrets.CLOUDINARY_API_SECRET }}
+            
+            # Google OAuth
+            GoogleOAuthSettings__ClientId=${{ secrets.GOOGLE_CLIENT_ID }}
+            GoogleOAuthSettings__ClientSecret=${{ secrets.GOOGLE_CLIENT_SECRET }}
+            
+            # Facebook OAuth
+            FacebookOAuthSettings__AppId=${{ secrets.FACEBOOK_APP_ID }}
+            FacebookOAuthSettings__AppSecret=${{ secrets.FACEBOOK_APP_SECRET }}
+            
+            # Production Environment
+            ASPNETCORE_ENVIRONMENT=Production
+            EOF
+            
+            # Actualizar código
+            echo "📥 Pulling latest code..."
+            git pull origin main
+            
+            # Parar servicios actuales
+            echo "🛑 Stopping current services..."
+            docker-compose down
+            
+            # Limpiar imágenes no utilizadas
+            echo "🧹 Cleaning up..."
+            docker system prune -f
+            
+            # Construir e iniciar servicios
+            echo "🔨 Building and starting services..."
+            docker-compose up -d --build
+            
+            # Verificar que los servicios estén funcionando
+            echo "✅ Verifying deployment..."
+            sleep 30
+            
+            # Verificar MongoDB
+            if docker ps | grep softfocus-mongodb | grep -q Up; then
+              echo "✅ MongoDB container is running"
+            else
+              echo "❌ MongoDB container failed to start"
+              docker logs softfocus-mongodb
+              exit 1
+            fi
+            
+            # Verificar Backend
+            if docker ps | grep softfocus-dotnet | grep -q Up; then
+              echo "✅ Backend container is running"
+            else
+              echo "❌ Backend container failed to start"
+              docker logs softfocus-dotnet
+              exit 1
+            fi
+            
+            echo "🎉 SoftFocus deployment completed successfully!"
+            echo "📊 Backend: http://$(curl -s ifconfig.me):5000"
+            echo "📚 Swagger: http://$(curl -s ifconfig.me):5000/swagger"
