@@ -1,5 +1,3 @@
-# Crear el docker-compose.yml con el contenido correcto
-  cat > docker-compose.yml << 'EOF'
 version: '3.8'
 
 services:
@@ -45,4 +43,3 @@ volumes:
 networks:
   softfocus-network:
     driver: bridge
-  EOF
