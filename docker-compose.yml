@@ -9,6 +9,7 @@ services:
       MONGO_INITDB_ROOT_USERNAME: softfocus_admin
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
       MONGO_INITDB_DATABASE: softfocus_db
+      MONGO_USER_PASSWORD: ${MONGO_USER_PASSWORD}
     ports:
       - "27017:27017"
     volumes:

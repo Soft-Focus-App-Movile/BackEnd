@@ -62,8 +62,8 @@ jobs:
             git pull origin main
             
             # Parar servicios actuales
-            echo "🛑 Stopping current services..."
-            docker-compose down
+            echo "🛑 Stopping current services and resetting database..."
+            docker-compose down -v
             
             # Limpiar imágenes no utilizadas
             echo "🧹 Cleaning up..."
