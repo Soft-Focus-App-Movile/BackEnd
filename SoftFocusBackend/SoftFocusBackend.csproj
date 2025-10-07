@@ -26,4 +26,21 @@
         <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.14.0" />
     </ItemGroup>
 
+    <ItemGroup>
+      <_ContentIncludedByDefault Remove="test-json\01-auth-register-general.json" />
+      <_ContentIncludedByDefault Remove="test-json\02-auth-register-psychologist.json" />
+      <_ContentIncludedByDefault Remove="test-json\03-auth-signin.json" />
+      <_ContentIncludedByDefault Remove="test-json\04-auth-google-oauth.json" />
+      <_ContentIncludedByDefault Remove="test-json\05-auth-forgot-password.json" />
+      <_ContentIncludedByDefault Remove="test-json\06-auth-reset-password.json" />
+      <_ContentIncludedByDefault Remove="test-json\07-auth-current-user.json" />
+      <_ContentIncludedByDefault Remove="test-json\08-users-update-profile.json" />
+      <_ContentIncludedByDefault Remove="test-json\09-users-get-psychologists.json" />
+      <_ContentIncludedByDefault Remove="test-json\10-ai-chat-message.json" />
+      <_ContentIncludedByDefault Remove="test-json\11-ai-chat-usage.json" />
+      <_ContentIncludedByDefault Remove="test-json\13-ai-emotion-usage.json" />
+      <_ContentIncludedByDefault Remove="test-json\14-error-limit-exceeded.json" />
+      <_ContentIncludedByDefault Remove="test-json\15-postman-collection.json" />
+    </ItemGroup>
+
 </Project>
