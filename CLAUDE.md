@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-SoftFocus is a .NET 9 backend API for a mental health support platform that connects users with psychologists. The application uses MongoDB for persistence, JWT for authentication, OAuth (Google/Facebook) for social login, and integrates with external services (Cloudinary for images, SMTP for email).
+SoftFocus  is a .NET 9 backend API for a mental health support platform that connects users with psychologists. The application uses MongoDB for persistence, JWT for authentication, OAuth (Google/Facebook) for social login, and integrates with external services (Cloudinary for images, SMTP for email).
 
 ## Common Commands
 
