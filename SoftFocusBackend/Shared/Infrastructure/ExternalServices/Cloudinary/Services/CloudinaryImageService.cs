@@ -187,6 +187,87 @@ public class CloudinaryImageService : ICloudinaryImageService
         }
     }
 
+    public async Task<string> UploadDocumentAsync(byte[] documentBytes, string fileName, string folder)
+    {
+        try
+        {
+            var validation = ValidateDocument(documentBytes, fileName);
+            if (!validation.IsValid)
+            {
+                throw new ArgumentException(validation.ErrorMessage);
+            }
+
+            var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            var fileNameWithoutExt = Path.GetFileNameWithoutExtension(fileName);
+            var extension = Path.GetExtension(fileName).ToLowerInvariant();
+            var publicId = $"{folder}{fileNameWithoutExt}_{timestamp}";
+
+            using var stream = new MemoryStream(documentBytes);
+
+            // For PDFs and documents, use RawUploadParams instead of ImageUploadParams
+            var uploadParams = new RawUploadParams
+            {
+                File = new FileDescription(fileName, stream),
+                PublicId = publicId,
+                Folder = folder,
+                Overwrite = true,
+                UseFilename = false
+            };
+
+            var uploadResult = await _cloudinary.UploadAsync(uploadParams);
+
+            if (uploadResult.Error != null)
+            {
+                _logger.LogError("Cloudinary document upload failed: {Error}", uploadResult.Error.Message);
+                throw new InvalidOperationException($"Document upload failed: {uploadResult.Error.Message}");
+            }
+
+            _logger.LogInformation("Document uploaded successfully to Cloudinary: {PublicId}", publicId);
+            return uploadResult.SecureUrl.ToString();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to upload document to Cloudinary");
+            throw;
+        }
+    }
+
+    public (bool IsValid, string ErrorMessage) ValidateDocument(byte[] documentBytes, string fileName)
+    {
+        if (documentBytes.Length > _settings.MaxFileSizeBytes)
+        {
+            var maxSizeMB = _settings.MaxFileSizeBytes / (1024.0 * 1024.0);
+            return (false, $"File size exceeds maximum allowed size of {maxSizeMB:F1}MB");
+        }
+
+        var extension = Path.GetExtension(fileName).ToLowerInvariant();
+        var allowedDocumentExtensions = new[] { ".jpg", ".jpeg", ".png", ".pdf" };
+
+        if (!allowedDocumentExtensions.Contains(extension))
+        {
+            var allowedExts = string.Join(", ", allowedDocumentExtensions);
+            return (false, $"File type {extension} not allowed. Allowed types: {allowedExts}");
+        }
+
+        // Validate file format by magic bytes
+        if (extension == ".pdf")
+        {
+            if (!IsValidPdfFormat(documentBytes))
+            {
+                return (false, "File does not appear to be a valid PDF");
+            }
+        }
+        else
+        {
+            if (!IsValidImageFormat(documentBytes))
+            {
+                return (false, "File does not appear to be a valid image");
+            }
+        }
+
+        return (true, string.Empty);
+    }
+
     private static bool IsValidImageFormat(byte[] imageBytes)
     {
         if (imageBytes.Length < 4)
@@ -199,5 +280,18 @@ public class CloudinaryImageService : ICloudinaryImageService
             return true;
 
         return false;
+    }
+
+    private static bool IsValidPdfFormat(byte[] pdfBytes)
+    {
+        if (pdfBytes.Length < 5)
+            return false;
+
+        // PDF files start with %PDF- (0x25 0x50 0x44 0x46 0x2D)
+        return pdfBytes[0] == 0x25 &&
+               pdfBytes[1] == 0x50 &&
+               pdfBytes[2] == 0x44 &&
+               pdfBytes[3] == 0x46 &&
+               pdfBytes[4] == 0x2D;
     }
 }

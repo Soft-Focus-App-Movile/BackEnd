@@ -69,6 +69,46 @@ public class PsychologistCommandService : IPsychologistCommandService
                 command.GraduationYear,
                 command.Degree);
 
+            // Validate document URLs before updating
+            if (!string.IsNullOrWhiteSpace(command.LicenseDocumentUrl))
+            {
+                if (!await _verificationService.ValidateDocumentUrlAsync(command.LicenseDocumentUrl))
+                {
+                    _logger.LogWarning("Invalid license document URL for psychologist: {UserId}", command.UserId);
+                    return null;
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(command.DiplomaCertificateUrl))
+            {
+                if (!await _verificationService.ValidateDocumentUrlAsync(command.DiplomaCertificateUrl))
+                {
+                    _logger.LogWarning("Invalid diploma certificate URL for psychologist: {UserId}", command.UserId);
+                    return null;
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(command.IdentityDocumentUrl))
+            {
+                if (!await _verificationService.ValidateDocumentUrlAsync(command.IdentityDocumentUrl))
+                {
+                    _logger.LogWarning("Invalid identity document URL for psychologist: {UserId}", command.UserId);
+                    return null;
+                }
+            }
+
+            if (command.AdditionalCertificatesUrls != null && command.AdditionalCertificatesUrls.Count > 0)
+            {
+                foreach (var url in command.AdditionalCertificatesUrls)
+                {
+                    if (!string.IsNullOrWhiteSpace(url) && !await _verificationService.ValidateDocumentUrlAsync(url))
+                    {
+                        _logger.LogWarning("Invalid additional certificate URL for psychologist: {UserId}", command.UserId);
+                        return null;
+                    }
+                }
+            }
+
             psychologist.UpdateVerificationDocuments(
                 command.LicenseDocumentUrl,
                 command.DiplomaCertificateUrl,

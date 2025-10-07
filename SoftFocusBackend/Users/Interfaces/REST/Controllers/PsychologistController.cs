@@ -8,6 +8,7 @@ using SoftFocusBackend.Users.Interfaces.REST.Resources;
 using SoftFocusBackend.Users.Interfaces.REST.Transform;
 using System.Security.Claims;
 using SoftFocusBackend.Users.Domain.Services;
+using SoftFocusBackend.Shared.Infrastructure.ExternalServices.Cloudinary.Services;
 
 namespace SoftFocusBackend.Users.Interfaces.REST.Controllers;
 
@@ -19,15 +20,18 @@ public class PsychologistController : ControllerBase
 {
     private readonly IPsychologistCommandService _psychologistCommandService;
     private readonly IPsychologistQueryService _psychologistQueryService;
+    private readonly ICloudinaryImageService _cloudinaryImageService;
     private readonly ILogger<PsychologistController> _logger;
 
     public PsychologistController(
         IPsychologistCommandService psychologistCommandService,
         IPsychologistQueryService psychologistQueryService,
+        ICloudinaryImageService cloudinaryImageService,
         ILogger<PsychologistController> logger)
     {
         _psychologistCommandService = psychologistCommandService ?? throw new ArgumentNullException(nameof(psychologistCommandService));
         _psychologistQueryService = psychologistQueryService ?? throw new ArgumentNullException(nameof(psychologistQueryService));
+        _cloudinaryImageService = cloudinaryImageService ?? throw new ArgumentNullException(nameof(cloudinaryImageService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -67,8 +71,8 @@ public class PsychologistController : ControllerBase
     [HttpPut("verification")]
     [ProducesResponseType(typeof(PsychologistVerificationResource), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(object), StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> UpdateVerification([FromBody] PsychologistVerificationResource resource)
+    [ProducesResponseType(typeof(object), StatusCodes.Status401Unauthorized)] 
+    public async Task<IActionResult> UpdateVerification([FromForm] PsychologistVerificationResource resource)
     {
         try
         {
@@ -85,7 +89,74 @@ public class PsychologistController : ControllerBase
 
             _logger.LogInformation("Update verification for psychologist: {UserId}", userId);
 
-            var command = PsychologistResourceAssembler.ToUpdateVerificationCommand(resource, userId);
+            // Upload files to Cloudinary and get URLs
+            string? licenseUrl = resource.LicenseDocumentUrl;
+            string? diplomaUrl = resource.DiplomaCertificateUrl;
+            string? identityUrl = resource.IdentityDocumentUrl;
+            List<string>? additionalUrls = resource.AdditionalCertificatesUrls;
+
+            // Upload license document if provided
+            if (resource.LicenseDocumentFile != null && resource.LicenseDocumentFile.Length > 0)
+            {
+                using var licenseStream = new MemoryStream();
+                await resource.LicenseDocumentFile.CopyToAsync(licenseStream);
+                var licenseBytes = licenseStream.ToArray();
+                licenseUrl = await _cloudinaryImageService.UploadDocumentAsync(
+                    licenseBytes,
+                    resource.LicenseDocumentFile.FileName,
+                    "softfocus/profiles/");
+                _logger.LogInformation("License document uploaded for psychologist: {UserId}", userId);
+            }
+
+            // Upload diploma certificate if provided
+            if (resource.DiplomaCertificateFile != null && resource.DiplomaCertificateFile.Length > 0)
+            {
+                using var diplomaStream = new MemoryStream();
+                await resource.DiplomaCertificateFile.CopyToAsync(diplomaStream);
+                var diplomaBytes = diplomaStream.ToArray();
+                diplomaUrl = await _cloudinaryImageService.UploadDocumentAsync(
+                    diplomaBytes,
+                    resource.DiplomaCertificateFile.FileName,
+                    "softfocus/profiles/");
+                _logger.LogInformation("Diploma certificate uploaded for psychologist: {UserId}", userId);
+            }
+
+            // Upload identity document if provided
+            if (resource.IdentityDocumentFile != null && resource.IdentityDocumentFile.Length > 0)
+            {
+                using var identityStream = new MemoryStream();
+                await resource.IdentityDocumentFile.CopyToAsync(identityStream);
+                var identityBytes = identityStream.ToArray();
+                identityUrl = await _cloudinaryImageService.UploadDocumentAsync(
+                    identityBytes,
+                    resource.IdentityDocumentFile.FileName,
+                    "softfocus/profiles/");
+                _logger.LogInformation("Identity document uploaded for psychologist: {UserId}", userId);
+            }
+
+            // Upload additional certificates if provided
+            if (resource.AdditionalCertificatesFiles != null && resource.AdditionalCertificatesFiles.Count > 0)
+            {
+                additionalUrls = new List<string>();
+                foreach (var file in resource.AdditionalCertificatesFiles)
+                {
+                    if (file.Length > 0)
+                    {
+                        using var fileStream = new MemoryStream();
+                        await file.CopyToAsync(fileStream);
+                        var fileBytes = fileStream.ToArray();
+                        var url = await _cloudinaryImageService.UploadDocumentAsync(
+                            fileBytes,
+                            file.FileName,
+                            "softfocus/profiles/");
+                        additionalUrls.Add(url);
+                    }
+                }
+                _logger.LogInformation("Additional certificates uploaded for psychologist: {UserId}, Count: {Count}", userId, additionalUrls.Count);
+            }
+
+            var command = PsychologistResourceAssembler.ToUpdateVerificationCommand(
+                resource, userId, licenseUrl, diplomaUrl, identityUrl, additionalUrls);
             var updatedPsychologist = await _psychologistCommandService.HandleUpdateVerificationAsync(command);
 
             if (updatedPsychologist == null)

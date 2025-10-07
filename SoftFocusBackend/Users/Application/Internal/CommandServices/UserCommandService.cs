@@ -144,7 +144,26 @@ public class UserCommandService : IUserCommandService
                     command.PushNotifications ?? user.PushNotifications);
             }
 
-            if (!string.IsNullOrWhiteSpace(command.ProfileImageUrl))
+            // Upload profile image to Cloudinary if provided
+            if (command.ProfileImageBytes != null && command.ProfileImageBytes.Length > 0 &&
+                !string.IsNullOrWhiteSpace(command.ProfileImageFileName))
+            {
+                try
+                {
+                    var imageUrl = await _cloudinaryImageService.UploadImageAsync(
+                        command.ProfileImageBytes,
+                        command.ProfileImageFileName,
+                        "softfocus/profiles/");
+                    user.SetProfileImageUrl(imageUrl);
+                    _logger.LogInformation("Profile image uploaded successfully for user: {UserId}", user.Id);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to upload profile image for user: {UserId}", command.UserId);
+                    // Continue with profile update even if image upload fails
+                }
+            }
+            else if (!string.IsNullOrWhiteSpace(command.ProfileImageUrl))
             {
                 user.SetProfileImageUrl(command.ProfileImageUrl);
             }

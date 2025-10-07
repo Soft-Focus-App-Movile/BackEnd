@@ -31,7 +31,12 @@ public static class PsychologistResourceAssembler
     }
 
     public static UpdatePsychologistVerificationCommand ToUpdateVerificationCommand(
-        PsychologistVerificationResource resource, string userId)
+        PsychologistVerificationResource resource,
+        string userId,
+        string? licenseDocumentUrl = null,
+        string? diplomaCertificateUrl = null,
+        string? identityDocumentUrl = null,
+        List<string>? additionalCertificatesUrls = null)
     {
         return new UpdatePsychologistVerificationCommand(
             userId: userId,
@@ -43,10 +48,10 @@ public static class PsychologistResourceAssembler
             university: resource.University,
             graduationYear: resource.GraduationYear,
             degree: resource.Degree,
-            licenseDocumentUrl: resource.LicenseDocumentUrl,
-            diplomaCertificateUrl: resource.DiplomaCertificateUrl,
-            identityDocumentUrl: resource.IdentityDocumentUrl,
-            additionalCertificatesUrls: resource.AdditionalCertificatesUrls
+            licenseDocumentUrl: licenseDocumentUrl ?? resource.LicenseDocumentUrl,
+            diplomaCertificateUrl: diplomaCertificateUrl ?? resource.DiplomaCertificateUrl,
+            identityDocumentUrl: identityDocumentUrl ?? resource.IdentityDocumentUrl,
+            additionalCertificatesUrls: additionalCertificatesUrls ?? resource.AdditionalCertificatesUrls
         );
     }
 

@@ -97,7 +97,7 @@ public class PsychologistVerificationService : IPsychologistVerificationService
     public async Task<bool> CanPsychologistBeVerifiedAsync(PsychologistUser psychologist)
     {
         await Task.CompletedTask;
-        
+
         if (psychologist == null)
             return false;
 
@@ -106,10 +106,12 @@ public class PsychologistVerificationService : IPsychologistVerificationService
                              psychologist.Specialties.Count > 0 &&
                              psychologist.YearsOfExperience >= 0;
 
-        var hasDocuments = !string.IsNullOrWhiteSpace(psychologist.LicenseDocumentUrl) ||
-                          !string.IsNullOrWhiteSpace(psychologist.DiplomaCertificateUrl);
+        // All 3 mandatory documents are required for admin verification
+        var hasAllMandatoryDocuments = !string.IsNullOrWhiteSpace(psychologist.LicenseDocumentUrl) &&
+                                       !string.IsNullOrWhiteSpace(psychologist.DiplomaCertificateUrl) &&
+                                       !string.IsNullOrWhiteSpace(psychologist.IdentityDocumentUrl);
 
-        return hasRequiredInfo && hasDocuments;
+        return hasRequiredInfo && hasAllMandatoryDocuments;
     }
 
     public async Task<string> GenerateVerificationReportAsync(PsychologistUser psychologist)
