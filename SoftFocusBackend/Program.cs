@@ -43,6 +43,14 @@ using SoftFocusBackend.AI.Infrastructure.ExternalServices.HuggingFace.Configurat
 using SoftFocusBackend.AI.Infrastructure.ExternalServices.HuggingFace.Services;
 using SoftFocusBackend.AI.Infrastructure.ExternalServices.UsageTracking;
 using SoftFocusBackend.AI.Infrastructure.Persistence.MongoDB.Repositories;
+using SoftFocusBackend.Tracking.Application.ACL.Services;
+using SoftFocusBackend.Tracking.Application.Internal.CommandServices;
+using SoftFocusBackend.Tracking.Application.Internal.OutboundServices;
+using SoftFocusBackend.Tracking.Application.Internal.QueryServices;
+using SoftFocusBackend.Tracking.Domain.Services;
+using SoftFocusBackend.Tracking.Infrastructure.ACL;
+using SoftFocusBackend.Tracking.Infrastructure.Persistence.MongoDB.Repositories;
+using SoftFocusBackend.Tracking.Infrastructure.Services;
 
 Env.Load();
 
@@ -111,6 +119,28 @@ builder.Services.AddScoped<IPsychologistRepository, PsychologistRepository>();
 
 // Users - ACL
 builder.Services.AddScoped<IAuthNotificationService, AuthNotificationService>();
+
+// Tracking - Domain Services
+builder.Services.AddScoped<ITrackingDomainService, TrackingDomainService>();
+
+// Tracking - Application Services
+builder.Services.AddScoped<ICheckInCommandService, CheckInCommandService>();
+builder.Services.AddScoped<ICheckInQueryService, CheckInQueryService>();
+builder.Services.AddScoped<IEmotionalCalendarCommandService, EmotionalCalendarCommandService>();
+builder.Services.AddScoped<IEmotionalCalendarQueryService, EmotionalCalendarQueryService>();
+
+// Tracking - Repositories
+builder.Services.AddScoped<ICheckInRepository, CheckInRepository>();
+builder.Services.AddScoped<IEmotionalCalendarRepository, EmotionalCalendarRepository>();
+
+// Tracking - ACL
+builder.Services.AddScoped<IUserValidationService, UserValidationService>();
+builder.Services.AddScoped<ITrackingNotificationService, TrackingNotificationService>();
+
+// Tracking - Facade
+builder.Services.AddScoped<ITrackingFacade, TrackingFacade>();
+
+
 
 builder.Services.AddScoped<IUserFacade, UserFacade>();
 
