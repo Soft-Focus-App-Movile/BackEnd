@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using SoftFocusBackend.Users.Application.Internal.CommandServices;
 using SoftFocusBackend.Users.Application.Internal.QueryServices;
 using SoftFocusBackend.Users.Domain.Model.Commands;
@@ -8,6 +9,7 @@ using SoftFocusBackend.Users.Interfaces.REST.Resources;
 using SoftFocusBackend.Users.Interfaces.REST.Transform;
 using System.Security.Claims;
 using SoftFocusBackend.Users.Domain.Services;
+using SoftFocusBackend.Shared.Infrastructure.ExternalServices.Cloudinary.Configuration;
 using SoftFocusBackend.Shared.Infrastructure.ExternalServices.Cloudinary.Services;
 
 namespace SoftFocusBackend.Users.Interfaces.REST.Controllers;
@@ -21,17 +23,20 @@ public class PsychologistController : ControllerBase
     private readonly IPsychologistCommandService _psychologistCommandService;
     private readonly IPsychologistQueryService _psychologistQueryService;
     private readonly ICloudinaryImageService _cloudinaryImageService;
+    private readonly CloudinarySettings _cloudinarySettings;
     private readonly ILogger<PsychologistController> _logger;
 
     public PsychologistController(
         IPsychologistCommandService psychologistCommandService,
         IPsychologistQueryService psychologistQueryService,
         ICloudinaryImageService cloudinaryImageService,
+        IOptions<CloudinarySettings> cloudinarySettings,
         ILogger<PsychologistController> logger)
     {
         _psychologistCommandService = psychologistCommandService ?? throw new ArgumentNullException(nameof(psychologistCommandService));
         _psychologistQueryService = psychologistQueryService ?? throw new ArgumentNullException(nameof(psychologistQueryService));
         _cloudinaryImageService = cloudinaryImageService ?? throw new ArgumentNullException(nameof(cloudinaryImageService));
+        _cloudinarySettings = cloudinarySettings.Value;
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -104,7 +109,7 @@ public class PsychologistController : ControllerBase
                 licenseUrl = await _cloudinaryImageService.UploadDocumentAsync(
                     licenseBytes,
                     resource.LicenseDocumentFile.FileName,
-                    "softfocus/profiles/");
+                    _cloudinarySettings.PsychologistDocumentsFolder);
                 _logger.LogInformation("License document uploaded for psychologist: {UserId}", userId);
             }
 
@@ -117,7 +122,7 @@ public class PsychologistController : ControllerBase
                 diplomaUrl = await _cloudinaryImageService.UploadDocumentAsync(
                     diplomaBytes,
                     resource.DiplomaCertificateFile.FileName,
-                    "softfocus/profiles/");
+                    _cloudinarySettings.PsychologistDocumentsFolder);
                 _logger.LogInformation("Diploma certificate uploaded for psychologist: {UserId}", userId);
             }
 
@@ -130,7 +135,7 @@ public class PsychologistController : ControllerBase
                 identityUrl = await _cloudinaryImageService.UploadDocumentAsync(
                     identityBytes,
                     resource.IdentityDocumentFile.FileName,
-                    "softfocus/profiles/");
+                    _cloudinarySettings.PsychologistDocumentsFolder);
                 _logger.LogInformation("Identity document uploaded for psychologist: {UserId}", userId);
             }
 
@@ -148,7 +153,7 @@ public class PsychologistController : ControllerBase
                         var url = await _cloudinaryImageService.UploadDocumentAsync(
                             fileBytes,
                             file.FileName,
-                            "softfocus/profiles/");
+                            _cloudinarySettings.PsychologistDocumentsFolder);
                         additionalUrls.Add(url);
                     }
                 }

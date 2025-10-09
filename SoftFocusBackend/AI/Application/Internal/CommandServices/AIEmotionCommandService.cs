@@ -1,9 +1,11 @@
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using SoftFocusBackend.AI.Application.ACL.Services;
 using SoftFocusBackend.AI.Domain.Model.Aggregates;
 using SoftFocusBackend.AI.Domain.Model.Commands;
 using SoftFocusBackend.AI.Domain.Repositories;
 using SoftFocusBackend.AI.Domain.Services;
+using SoftFocusBackend.Shared.Infrastructure.ExternalServices.Cloudinary.Configuration;
 using SoftFocusBackend.Shared.Infrastructure.ExternalServices.Cloudinary.Services;
 
 namespace SoftFocusBackend.AI.Application.Internal.CommandServices;
@@ -17,6 +19,7 @@ public class AIEmotionCommandService
     private readonly ITrackingIntegrationService _trackingIntegration;
     private readonly IEmotionAnalysisRepository _analysisRepository;
     private readonly ICloudinaryImageService _cloudinaryService;
+    private readonly CloudinarySettings _cloudinarySettings;
     private readonly ILogger<AIEmotionCommandService> _logger;
 
     public AIEmotionCommandService(
@@ -27,6 +30,7 @@ public class AIEmotionCommandService
         ITrackingIntegrationService trackingIntegration,
         IEmotionAnalysisRepository analysisRepository,
         ICloudinaryImageService cloudinaryService,
+        IOptions<CloudinarySettings> cloudinarySettings,
         ILogger<AIEmotionCommandService> logger)
     {
         _usageTracker = usageTracker;
@@ -36,6 +40,7 @@ public class AIEmotionCommandService
         _trackingIntegration = trackingIntegration;
         _analysisRepository = analysisRepository;
         _cloudinaryService = cloudinaryService;
+        _cloudinarySettings = cloudinarySettings.Value;
         _logger = logger;
     }
 
@@ -54,7 +59,7 @@ public class AIEmotionCommandService
             }
 
             var fileName = $"{command.UserId}_{DateTime.UtcNow:yyyyMMddHHmmss}.jpg";
-            var imageUrl = await _cloudinaryService.UploadImageAsync(command.ImageBytes, fileName, "emotion_analyses");
+            var imageUrl = await _cloudinaryService.UploadImageAsync(command.ImageBytes, fileName, _cloudinarySettings.EmotionAnalysesFolder);
 
             var emotionResult = await _emotionService.AnalyzeAsync(command.ImageBytes);
 
