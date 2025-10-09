@@ -11,21 +11,22 @@ public class UserFacade : IUserFacade
 {
     private readonly IUserRepository _userRepository;
     private readonly IPsychologistRepository _psychologistRepository;
-    private readonly IUserCommandService _userCommandService;  // AGREGAR
+    private readonly IUserCommandService _userCommandService;
     private readonly ILogger<UserFacade> _logger;
 
     public UserFacade(
         IUserRepository userRepository, 
         IPsychologistRepository psychologistRepository,
-        IUserCommandService userCommandService,  // AGREGAR
+        IUserCommandService userCommandService,
         ILogger<UserFacade> logger)
     {
         _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
         _psychologistRepository = psychologistRepository ?? throw new ArgumentNullException(nameof(psychologistRepository));
-        _userCommandService = userCommandService ?? throw new ArgumentNullException(nameof(userCommandService));  // AGREGAR
+        _userCommandService = userCommandService ?? throw new ArgumentNullException(nameof(userCommandService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
+    // ---------------------- USUARIOS ----------------------
     public async Task<User?> GetUserByIdAsync(string userId)
     {
         try
@@ -54,6 +55,25 @@ public class UserFacade : IUserFacade
         }
     }
 
+    public async Task<bool> UserExistsAsync(string userId)
+    {
+        var user = await _userRepository.FindByIdAsync(userId);
+        return user != null;
+    }
+
+    public async Task<string> GetUserEmailByIdAsync(string userId)
+    {
+        var user = await _userRepository.FindByIdAsync(userId);
+        return user?.Email ?? string.Empty;
+    }
+
+    public async Task<string> GetUserPhoneByIdAsync(string userId)
+    {
+        var user = await _userRepository.FindByIdAsync(userId);
+        return user?.Phone ?? string.Empty;
+    }
+
+    // ---------------------- PSICÓLOGOS ----------------------
     public async Task<PsychologistUser?> GetPsychologistByInvitationCodeAsync(string invitationCode)
     {
         try
@@ -82,14 +102,14 @@ public class UserFacade : IUserFacade
         }
     }
 
+    // ---------------------- CONSULTAS GENERALES ----------------------
     public async Task<(List<User> Users, int TotalCount)> GetAllUsersAsync(int page = 1, int pageSize = 20, 
         UserType? userType = null, bool? isActive = null, string? searchTerm = null)
     {
         try
         {
             _logger.LogDebug("Facade: Getting all users - Page: {Page}, Size: {PageSize}", page, pageSize);
-            return await _userRepository.FindAllUsersAsync(page, pageSize, userType, isActive, 
-                null, searchTerm);
+            return await _userRepository.FindAllUsersAsync(page, pageSize, userType, isActive, null, searchTerm);
         }
         catch (Exception ex)
         {
@@ -146,11 +166,11 @@ public class UserFacade : IUserFacade
         try
         {
             _logger.LogDebug("Facade: Getting user statistics");
-            
+
             var totalUsers = await _userRepository.GetTotalUsersCountAsync();
             var activeUsers = await _userRepository.GetActiveUsersCountAsync();
             var verifiedPsychologists = await _psychologistRepository.FindVerifiedPsychologistsAsync();
-            
+
             var (allUsers, _) = await _userRepository.FindAllUsersAsync(1, int.MaxValue, UserType.Psychologist);
             var psychologistsCount = allUsers.Count;
 
@@ -184,25 +204,23 @@ public class UserFacade : IUserFacade
             };
         }
     }
-    
+
+    // ---------------------- CREACIÓN DE USUARIOS ----------------------
     public async Task<User?> CreateUserAsync(string email, string password, string fullName, string userType, 
         string? professionalLicense = null, string[]? specialties = null)
     {
         try
         {
             _logger.LogDebug("Facade: Creating user with email: {Email}", email);
-            
-            // Hash the password
+
             var passwordHash = BCrypt.Net.BCrypt.HashPassword(password);
-            
-            // Convert UserType string to enum
+
             if (!Enum.TryParse<UserType>(userType, out var userTypeEnum))
             {
                 _logger.LogWarning("Facade: Invalid user type: {UserType}", userType);
                 return null;
             }
-            
-            // Convert specialties if psychologist
+
             List<PsychologySpecialty>? specialtiesList = null;
             if (specialties != null && userTypeEnum == UserType.Psychologist)
             {
@@ -215,11 +233,8 @@ public class UserFacade : IUserFacade
                     }
                 }
             }
-            
-            var command = new CreateUserCommand(
-                email, passwordHash, fullName, userTypeEnum, 
-                professionalLicense, specialtiesList);
-                
+
+            var command = new CreateUserCommand(email, passwordHash, fullName, userTypeEnum, professionalLicense, specialtiesList);
             return await _userCommandService.HandleCreateUserAsync(command);
         }
         catch (Exception ex)
@@ -228,29 +243,22 @@ public class UserFacade : IUserFacade
             return null;
         }
     }
-    
+
     public async Task<User?> CreateOAuthUserAsync(string email, string fullName, string? profileImageUrl = null)
     {
         try
         {
             _logger.LogDebug("Facade: Creating OAuth user with email: {Email}", email);
-        
-            // Crear usuario OAuth sin password (passwordHash vacío)
-            var command = new CreateUserCommand(
-                email, 
-                "[OAUTH_USER]", // ← Cambiar por esto
-                fullName, 
-                UserType.General);
-            
+
+            var command = new CreateUserCommand(email, "[OAUTH_USER]", fullName, UserType.General);
             var user = await _userCommandService.HandleCreateUserAsync(command);
-        
-            // Si viene con imagen de perfil del proveedor OAuth, establecerla
+
             if (user != null && !string.IsNullOrWhiteSpace(profileImageUrl))
             {
                 user.SetProfileImageUrl(profileImageUrl);
                 _userRepository.Update(user);
             }
-        
+
             return user;
         }
         catch (Exception ex)

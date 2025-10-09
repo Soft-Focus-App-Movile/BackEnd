@@ -20,6 +20,9 @@ public interface IUserFacade
         string? professionalLicense = null, string[]? specialties = null);
     
     Task<User?> CreateOAuthUserAsync(string email, string fullName, string? profileImageUrl = null);
+    Task<bool> UserExistsAsync(string userId);
+    Task<string> GetUserEmailByIdAsync(string userId);
+    Task<string> GetUserPhoneByIdAsync(string userId);
 }
 
 public record UserStats

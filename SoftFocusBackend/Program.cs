@@ -70,6 +70,16 @@ using SoftFocusBackend.Library.Infrastructure.ExternalServices.Foursquare.Config
 using SoftFocusBackend.Library.Infrastructure.ExternalServices.Foursquare.Services;
 using SoftFocusBackend.Library.Infrastructure.Persistence.MongoDB.Repositories;
 using SoftFocusBackend.Library.Infrastructure.Services;
+using SoftFocusBackend.Notification.Application.ACL.Services;
+using SoftFocusBackend.Notification.Application.Internal.CommandServices;
+using SoftFocusBackend.Notification.Application.Internal.QueryServices;
+using SoftFocusBackend.Notification.Domain.Repositories;
+using SoftFocusBackend.Notification.Domain.Services;
+using SoftFocusBackend.Notification.Infrastructure.ACL;
+using SoftFocusBackend.Notification.Infrastructure.BackgroundServices;
+using SoftFocusBackend.Notification.Infrastructure.ExternalServices;
+using SoftFocusBackend.Notification.Infrastructure.Persistence.MongoDB.Repositories;
+using SoftFocusBackend.Notification.Infrastructure.Services;
 
 Env.Load();
 
@@ -244,6 +254,31 @@ builder.Services.AddScoped<SoftFocusBackend.Library.Application.ACL.Services.ITr
 
 // HttpContextAccessor for user context
 builder.Services.AddHttpContextAccessor();
+
+// Notification Context Registration
+builder.Services.AddScoped<INotificationRepository, MongoNotificationRepository>();
+builder.Services.AddScoped<INotificationPreferenceRepository, MongoNotificationPreferenceRepository>();
+builder.Services.AddScoped<INotificationTemplateRepository, MongoNotificationTemplateRepository>();
+
+builder.Services.AddScoped<INotificationSchedulingService, NotificationSchedulingService>();
+builder.Services.AddScoped<IDeliveryOptimizationService, DeliveryOptimizationService>();
+
+builder.Services.AddScoped<SendNotificationCommandService>();
+builder.Services.AddScoped<UpdatePreferencesCommandService>();
+builder.Services.AddScoped<NotificationHistoryQueryService>();
+builder.Services.AddScoped<PreferenceQueryService>();
+
+builder.Services.AddScoped<IUserNotificationService, UserNotificationService>();
+
+builder.Services.AddSingleton<FirebaseFCMService>(sp => 
+    new FirebaseFCMService(
+        builder.Configuration["Firebase:ServerKey"],
+        sp.GetRequiredService<HttpClient>()
+    )
+);
+builder.Services.AddScoped<EmailNotificationService>();
+
+builder.Services.AddHostedService<NotificationDeliveryService>();
 
 var tokenSettings = builder.Configuration.GetSection("TokenSettings").Get<TokenSettings>();
 if (tokenSettings == null || !tokenSettings.IsValid())

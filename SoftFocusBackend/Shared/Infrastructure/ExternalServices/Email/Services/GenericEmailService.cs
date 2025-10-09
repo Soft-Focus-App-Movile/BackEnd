@@ -67,7 +67,7 @@ public class GenericEmailService : IGenericEmailService
         }
     }
 
-    public async Task SendEmailAsync(string email, string subject, string htmlBody)
+    public async Task SendEmailAsync(string email, string subject, string htmlBody, bool isHtml)
     {
         try
         {
