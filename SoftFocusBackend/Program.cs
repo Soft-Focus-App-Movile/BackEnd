@@ -51,6 +51,25 @@ using SoftFocusBackend.Tracking.Domain.Services;
 using SoftFocusBackend.Tracking.Infrastructure.ACL;
 using SoftFocusBackend.Tracking.Infrastructure.Persistence.MongoDB.Repositories;
 using SoftFocusBackend.Tracking.Infrastructure.Services;
+using SoftFocusBackend.Library.Application.ACL.Implementations;
+using SoftFocusBackend.Library.Application.ACL.Services;
+using SoftFocusBackend.Library.Application.Internal.CommandServices;
+using SoftFocusBackend.Library.Application.Internal.QueryServices;
+using SoftFocusBackend.Library.Domain.Repositories;
+using SoftFocusBackend.Library.Domain.Services;
+using SoftFocusBackend.Library.Infrastructure.Configuration;
+using SoftFocusBackend.Library.Infrastructure.ExternalServices.TMDB.Configuration;
+using SoftFocusBackend.Library.Infrastructure.ExternalServices.TMDB.Services;
+using SoftFocusBackend.Library.Infrastructure.ExternalServices.Spotify.Configuration;
+using SoftFocusBackend.Library.Infrastructure.ExternalServices.Spotify.Services;
+using SoftFocusBackend.Library.Infrastructure.ExternalServices.YouTube.Configuration;
+using SoftFocusBackend.Library.Infrastructure.ExternalServices.YouTube.Services;
+using SoftFocusBackend.Library.Infrastructure.ExternalServices.OpenWeather.Configuration;
+using SoftFocusBackend.Library.Infrastructure.ExternalServices.OpenWeather.Services;
+using SoftFocusBackend.Library.Infrastructure.ExternalServices.Foursquare.Configuration;
+using SoftFocusBackend.Library.Infrastructure.ExternalServices.Foursquare.Services;
+using SoftFocusBackend.Library.Infrastructure.Persistence.MongoDB.Repositories;
+using SoftFocusBackend.Library.Infrastructure.Services;
 
 Env.Load();
 
@@ -100,6 +119,12 @@ builder.Configuration["FacebookOAuthSettings:AppId"] = Environment.GetEnvironmen
 builder.Configuration["FacebookOAuthSettings:AppSecret"] = Environment.GetEnvironmentVariable("FacebookOAuthSettings__AppSecret");
 builder.Configuration["GeminiSettings:ApiKey"] = Environment.GetEnvironmentVariable("GeminiSettings__ApiKey");
 builder.Configuration["HuggingFaceSettings:ApiToken"] = Environment.GetEnvironmentVariable("HuggingFaceSettings__ApiToken");
+builder.Configuration["TMDB:ApiKey"]= Environment.GetEnvironmentVariable("TMDB__ApiKey");
+builder.Configuration["Spotify:ClientId"] = Environment.GetEnvironmentVariable("Spotify__ClientId");
+builder.Configuration["Spotify:ClientSecret"] = Environment.GetEnvironmentVariable("Spotify__ClientSecret");
+builder.Configuration["YouTube:ApiKey"] = Environment.GetEnvironmentVariable("YouTube__ApiKey");
+builder.Configuration["OpenWeather:ApiKey"] = Environment.GetEnvironmentVariable("OpenWeather__ApiKey");
+builder.Configuration["Foursquare:ApiKey"] = Environment.GetEnvironmentVariable("Foursquare__ApiKey");
 
 // Users - Domain Services
 builder.Services.AddScoped<IUserDomainService, UserDomainService>();
@@ -166,10 +191,59 @@ builder.Services.AddScoped<AIEmotionCommandService>();
 builder.Services.AddScoped<AIUsageQueryService>();
 
 // AI - ACL Services (Mock implementations)
-builder.Services.AddScoped<ITrackingIntegrationService, TrackingIntegrationService>();
+builder.Services.AddScoped<SoftFocusBackend.AI.Application.ACL.Services.ITrackingIntegrationService, SoftFocusBackend.AI.Application.ACL.Implementations.TrackingIntegrationService>();
 builder.Services.AddScoped<ITherapyIntegrationService, TherapyIntegrationService>();
 builder.Services.AddScoped<ICrisisIntegrationService, CrisisIntegrationService>();
 builder.Services.AddScoped<ISubscriptionIntegrationService, SubscriptionIntegrationService>();
+
+// ============================================
+// LIBRARY BOUNDED CONTEXT
+// ============================================
+
+// Library - Configuration Settings
+builder.Services.Configure<TMDBSettings>(builder.Configuration.GetSection("TMDB"));
+builder.Services.Configure<SpotifySettings>(builder.Configuration.GetSection("Spotify"));
+builder.Services.Configure<YouTubeSettings>(builder.Configuration.GetSection("YouTube"));
+builder.Services.Configure<OpenWeatherSettings>(builder.Configuration.GetSection("OpenWeather"));
+builder.Services.Configure<FoursquareSettings>(builder.Configuration.GetSection("Foursquare"));
+builder.Services.Configure<LibraryCacheSettings>(builder.Configuration.GetSection("LibraryCacheSettings"));
+
+// Library - External Services (HttpClient configured)
+builder.Services.AddHttpClient<ITMDBService, TMDBMovieService>();
+builder.Services.AddHttpClient<ISpotifyService, SpotifyMusicService>();
+builder.Services.AddHttpClient<IYouTubeService, YouTubeVideoService>();
+builder.Services.AddHttpClient<IWeatherService, WeatherService>();
+builder.Services.AddHttpClient<IFoursquareService, FoursquarePlacesService>();
+
+// Library - Domain Services
+builder.Services.AddScoped<IContentSearchService, ContentSearchService>();
+builder.Services.AddScoped<IEmotionContentMatcher, EmotionContentMatcherService>();
+builder.Services.AddScoped<IWeatherPlaceRecommender, WeatherPlaceRecommenderService>();
+builder.Services.AddScoped<IContentCacheService, ContentCacheService>();
+
+// Library - Repositories
+builder.Services.AddScoped<IContentItemRepository, MongoContentItemRepository>();
+builder.Services.AddScoped<IUserFavoriteRepository, MongoUserFavoriteRepository>();
+builder.Services.AddScoped<IContentAssignmentRepository, MongoContentAssignmentRepository>();
+builder.Services.AddScoped<IContentCompletionRepository, MongoContentCompletionRepository>();
+
+// Library - Application Command Services
+builder.Services.AddScoped<IFavoriteCommandService, FavoriteCommandService>();
+builder.Services.AddScoped<IAssignmentCommandService, AssignmentCommandService>();
+builder.Services.AddScoped<ICompletionCommandService, CompletionCommandService>();
+
+// Library - Application Query Services
+builder.Services.AddScoped<IContentSearchQueryService, ContentSearchQueryService>();
+builder.Services.AddScoped<IFavoriteQueryService, FavoriteQueryService>();
+builder.Services.AddScoped<IAssignedContentQueryService, AssignedContentQueryService>();
+builder.Services.AddScoped<IRecommendationQueryService, RecommendationQueryService>();
+
+// Library - ACL Services
+builder.Services.AddScoped<SoftFocusBackend.Library.Application.ACL.Services.IUserIntegrationService, SoftFocusBackend.Library.Application.ACL.Implementations.UserIntegrationService>();
+builder.Services.AddScoped<SoftFocusBackend.Library.Application.ACL.Services.ITrackingIntegrationService, SoftFocusBackend.Library.Application.ACL.Implementations.TrackingIntegrationService>();
+
+// HttpContextAccessor for user context
+builder.Services.AddHttpContextAccessor();
 
 var tokenSettings = builder.Configuration.GetSection("TokenSettings").Get<TokenSettings>();
 if (tokenSettings == null || !tokenSettings.IsValid())
