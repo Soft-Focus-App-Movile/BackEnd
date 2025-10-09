@@ -16,6 +16,10 @@
         <PackageReference Include="Microsoft.AspNetCore.Authentication.Google" Version="9.0.9" />
         <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.5" />
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.5"/>
+        <PackageReference Include="Microsoft.AspNetCore.SignalR" Version="1.2.0" />
+        <PackageReference Include="Microsoft.AspNetCore.SignalR.Common" Version="10.0.0-rc.1.25451.107" />
+        <PackageReference Include="Microsoft.AspNetCore.SignalR.Core" Version="1.2.0" />
+        <PackageReference Include="Microsoft.AspNetCore.SignalR.Protocols.Json" Version="10.0.0-rc.1.25451.107" />
         <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0-rc.1.25451.107" />
         <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.14.0" />
         <PackageReference Include="MongoDB.Bson" Version="3.5.0" />
@@ -41,6 +45,13 @@
       <_ContentIncludedByDefault Remove="test-json\13-ai-emotion-usage.json" />
       <_ContentIncludedByDefault Remove="test-json\14-error-limit-exceeded.json" />
       <_ContentIncludedByDefault Remove="test-json\15-postman-collection.json" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="Therapy\Application\ACL\Implementations\" />
+      <Folder Include="Therapy\Application\ACL\Services\" />
+      <Folder Include="Therapy\Domain\Model\Entities\" />
+      <Folder Include="Therapy\Interfaces\REST\Transform\" />
     </ItemGroup>
 
 </Project>

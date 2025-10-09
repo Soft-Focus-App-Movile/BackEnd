@@ -14,11 +14,6 @@ public class BaseRepository<TEntity> : IBaseRepository<TEntity> where TEntity : 
         Collection = context.GetCollection<TEntity>(collectionName);
     }
 
-    protected BaseRepository(MongoDbContext context)
-    {
-        throw new NotImplementedException();
-    }
-
     public async Task AddAsync(TEntity entity)
     {
         entity.CreatedAt = DateTime.UtcNow;

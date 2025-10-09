@@ -8,7 +8,7 @@ namespace SoftFocusBackend.Notification.Infrastructure.Persistence.MongoDB.Repos
 
 public class MongoNotificationPreferenceRepository : BaseRepository<NotificationPreference>, INotificationPreferenceRepository
 {
-    public MongoNotificationPreferenceRepository(MongoDbContext context) : base(context)
+    public MongoNotificationPreferenceRepository(MongoDbContext context) : base(context, "notifications")
     {
         // Create indexes
         var indexKeys = Builders<NotificationPreference>.IndexKeys;

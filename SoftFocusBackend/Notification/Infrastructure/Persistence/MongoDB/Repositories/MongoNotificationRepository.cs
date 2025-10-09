@@ -11,7 +11,7 @@ namespace SoftFocusBackend.Notification.Infrastructure.Persistence.MongoDB.Repos
 
 public class MongoNotificationRepository : BaseRepository<NotificationAggregate>, INotificationRepository
 {
-    public MongoNotificationRepository(MongoDbContext context) : base(context)
+    public MongoNotificationRepository(MongoDbContext context) : base(context, "notifications")
     {
         // Crear índices
         var indexKeys = Builders<NotificationAggregate>.IndexKeys;

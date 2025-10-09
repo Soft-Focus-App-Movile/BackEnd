@@ -80,6 +80,9 @@ using SoftFocusBackend.Notification.Infrastructure.BackgroundServices;
 using SoftFocusBackend.Notification.Infrastructure.ExternalServices;
 using SoftFocusBackend.Notification.Infrastructure.Persistence.MongoDB.Repositories;
 using SoftFocusBackend.Notification.Infrastructure.Services;
+using Microsoft.AspNetCore.SignalR;
+using SoftFocusBackend.Therapy.Interfaces.REST.Hubs;
+
 
 Env.Load();
 
@@ -252,6 +255,16 @@ builder.Services.AddScoped<IRecommendationQueryService, RecommendationQueryServi
 builder.Services.AddScoped<SoftFocusBackend.Library.Application.ACL.Services.IUserIntegrationService, SoftFocusBackend.Library.Application.ACL.Implementations.UserIntegrationService>();
 builder.Services.AddScoped<SoftFocusBackend.Library.Application.ACL.Services.ITrackingIntegrationService, SoftFocusBackend.Library.Application.ACL.Implementations.TrackingIntegrationService>();
 
+// ============================================
+// THERAPY BOUNDED CONTEXT
+// ============================================
+
+// Add services to the container
+builder.Services.AddSignalR(); // Add SignalR services
+builder.Services.AddControllers();
+
+
+
 // HttpContextAccessor for user context
 builder.Services.AddHttpContextAccessor();
 
@@ -379,6 +392,9 @@ app.UseCors("AllowAllPolicy");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+
+// Map the ChatHub endpoint
+app.MapHub<ChatHub>("/chatHub");
 
 app.Run();
 
