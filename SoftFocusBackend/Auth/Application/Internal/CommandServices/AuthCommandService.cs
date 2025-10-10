@@ -12,17 +12,20 @@ public class AuthCommandService : IAuthCommandService
     private readonly IUserContextService _userContextService;
     private readonly TokenService _tokenService;
     private readonly IServiceProvider _serviceProvider;
+    private readonly IOAuthTempTokenService _oauthTempTokenService;
     private readonly ILogger<AuthCommandService> _logger;
 
     public AuthCommandService(
         IUserContextService userContextService,
         TokenService tokenService,
         IServiceProvider serviceProvider,
+        IOAuthTempTokenService oauthTempTokenService,
         ILogger<AuthCommandService> logger)
     {
         _userContextService = userContextService ?? throw new ArgumentNullException(nameof(userContextService));
         _tokenService = tokenService ?? throw new ArgumentNullException(nameof(tokenService));
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+        _oauthTempTokenService = oauthTempTokenService ?? throw new ArgumentNullException(nameof(oauthTempTokenService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -242,7 +245,7 @@ public class AuthCommandService : IAuthCommandService
                         var userInfo = await googleService.GetUserInfoAsync(provider.AccessToken);
                         return userInfo != null ? (userInfo.Value.Email, userInfo.Value.FullName) : null;
                     }
-            
+
                 case "facebook":
                     using (var scope = _serviceProvider.CreateScope())
                     {
@@ -250,7 +253,7 @@ public class AuthCommandService : IAuthCommandService
                         var userInfo = await facebookService.GetUserInfoAsync(provider.AccessToken);
                         return userInfo != null ? (userInfo.Value.Email, userInfo.Value.FullName) : null;
                     }
-            
+
                 default:
                     _logger.LogWarning("Unsupported OAuth provider: {Provider}", provider.Name);
                     return null;
@@ -259,6 +262,236 @@ public class AuthCommandService : IAuthCommandService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting user info from OAuth provider: {Provider}", provider.Name);
+            return null;
+        }
+    }
+
+    public async Task<string?> HandleRegisterGeneralUserAsync(RegisterGeneralUserCommand command)
+    {
+        try
+        {
+            _logger.LogInformation("Processing general user registration command: {AuditInfo}", command.GetAuditString());
+
+            if (!command.IsValid())
+            {
+                _logger.LogWarning("Invalid general user registration command for email: {Email}", command.Email);
+                return null;
+            }
+
+            var user = await _userContextService.CreateUserAsync(
+                command.Email,
+                command.Password,
+                command.GetFullName(),
+                "General");
+
+            if (user == null)
+            {
+                _logger.LogWarning("Failed to create general user for email: {Email}", command.Email);
+                return null;
+            }
+
+            _logger.LogInformation("General user registered successfully: {UserId} - {Email}", user.Id, user.Email);
+            return user.Id;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing general user registration for email: {Email}", command.Email);
+            return null;
+        }
+    }
+
+    public async Task<string?> HandleRegisterPsychologistAsync(RegisterPsychologistCommand command)
+    {
+        try
+        {
+            _logger.LogInformation("Processing psychologist registration command: {AuditInfo}", command.GetAuditString());
+
+            if (!command.IsValid())
+            {
+                _logger.LogWarning("Invalid psychologist registration command for email: {Email}", command.Email);
+                return null;
+            }
+
+            var user = await _userContextService.CreateUserAsync(
+                command.Email,
+                command.Password,
+                command.GetFullName(),
+                "Psychologist",
+                command.ProfessionalLicense,
+                command.Specialties);
+
+            if (user == null)
+            {
+                _logger.LogWarning("Failed to create psychologist user for email: {Email}", command.Email);
+                return null;
+            }
+
+            _logger.LogInformation("Psychologist registered successfully: {UserId} - {Email}", user.Id, user.Email);
+            return user.Id;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing psychologist registration for email: {Email}", command.Email);
+            return null;
+        }
+    }
+
+    public async Task<OAuthVerificationResult?> HandleVerifyOAuthAsync(VerifyOAuthCommand command)
+    {
+        try
+        {
+            _logger.LogInformation("Processing OAuth verification command: {AuditInfo}", command.GetAuditString());
+
+            if (!command.IsValid())
+            {
+                _logger.LogWarning("Invalid OAuth verification command for provider: {Provider}", command.Provider.Name);
+                return null;
+            }
+
+            var userInfo = await GetUserInfoFromOAuthProvider(command.Provider);
+            if (userInfo == null)
+            {
+                _logger.LogWarning("Failed to get user info from OAuth provider: {Provider}", command.Provider.Name);
+                return null;
+            }
+
+            // Check if user already exists
+            var existingUser = await _userContextService.GetUserByEmailAsync(userInfo.Value.Email);
+
+            if (existingUser != null)
+            {
+                // User exists - return info to proceed with direct login
+                _logger.LogInformation("OAuth user already exists: {Email}, proceeding with login", userInfo.Value.Email);
+
+                var authToken = _tokenService.GenerateToken(existingUser);
+
+                // Update last login asynchronously
+                _ = Task.Run(async () =>
+                {
+                    using var scope = _serviceProvider.CreateScope();
+                    var scopedUserService = scope.ServiceProvider.GetRequiredService<IUserContextService>();
+                    try
+                    {
+                        await scopedUserService.UpdateUserLastLoginAsync(existingUser.Id);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to update last login for OAuth user: {UserId}", existingUser.Id);
+                    }
+                });
+
+                return new OAuthVerificationResult
+                {
+                    Email = existingUser.Email,
+                    FullName = existingUser.FullName,
+                    Provider = command.Provider.Name,
+                    TempToken = authToken.Token, // Return actual JWT token for existing users
+                    NeedsRegistration = false,
+                    ExistingUserType = existingUser.Role
+                };
+            }
+
+            // User doesn't exist - create temp token for registration completion
+            _logger.LogInformation("OAuth user not found: {Email}, creating temp token for registration", userInfo.Value.Email);
+
+            var tempToken = await _oauthTempTokenService.CreateTokenAsync(
+                userInfo.Value.Email,
+                userInfo.Value.FullName,
+                command.Provider.Name);
+
+            return new OAuthVerificationResult
+            {
+                Email = userInfo.Value.Email,
+                FullName = userInfo.Value.FullName,
+                Provider = command.Provider.Name,
+                TempToken = tempToken.Token,
+                NeedsRegistration = true,
+                ExistingUserType = null
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing OAuth verification for provider: {Provider}", command.Provider.Name);
+            return null;
+        }
+    }
+
+    public async Task<AuthToken?> HandleCompleteOAuthRegistrationAsync(CompleteOAuthRegistrationCommand command)
+    {
+        try
+        {
+            _logger.LogInformation("Processing OAuth registration completion command: {AuditInfo}", command.GetAuditString());
+
+            if (!command.IsValid())
+            {
+                _logger.LogWarning("Invalid OAuth registration completion command for email: {Email}", command.Email);
+                return null;
+            }
+
+            // Validate temp token
+            var tempToken = await _oauthTempTokenService.ValidateAndRetrieveTokenAsync(command.Email + command.Provider);
+            if (tempToken == null)
+            {
+                _logger.LogWarning("Invalid or expired temp token for OAuth registration: {Email}", command.Email);
+                return null;
+            }
+
+            // Create user based on type
+            AuthenticatedUser? user;
+
+            if (command.UserType == "Psychologist")
+            {
+                user = await _userContextService.CreateUserAsync(
+                    command.Email,
+                    null, // OAuth users don't have password
+                    command.FullName,
+                    "Psychologist",
+                    command.ProfessionalLicense,
+                    command.Specialties);
+            }
+            else
+            {
+                user = await _userContextService.CreateUserAsync(
+                    command.Email,
+                    null, // OAuth users don't have password
+                    command.FullName,
+                    "General");
+            }
+
+            if (user == null)
+            {
+                _logger.LogWarning("Failed to create OAuth user for email: {Email}", command.Email);
+                return null;
+            }
+
+            // Remove temp token
+            await _oauthTempTokenService.RemoveTokenAsync(tempToken.Token);
+
+            _logger.LogInformation("OAuth user registered successfully: {UserId} - {Email}", user.Id, user.Email);
+
+            // Generate JWT token
+            var authToken = _tokenService.GenerateToken(user);
+
+            // Update last login asynchronously
+            _ = Task.Run(async () =>
+            {
+                using var scope = _serviceProvider.CreateScope();
+                var scopedUserService = scope.ServiceProvider.GetRequiredService<IUserContextService>();
+                try
+                {
+                    await scopedUserService.UpdateUserLastLoginAsync(user.Id);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to update last login for new OAuth user: {UserId}", user.Id);
+                }
+            });
+
+            return authToken;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing OAuth registration completion for email: {Email}", command.Email);
             return null;
         }
     }

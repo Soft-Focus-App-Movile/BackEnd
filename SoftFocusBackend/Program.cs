@@ -329,7 +329,7 @@ builder.Services.AddSwaggerGen(options =>
             Email = "contact@softfocus.com"
         }
     });
-    
+
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         In = ParameterLocation.Header,
@@ -339,7 +339,7 @@ builder.Services.AddSwaggerGen(options =>
         BearerFormat = "JWT",
         Scheme = "bearer"
     });
-    
+
     options.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
@@ -360,7 +360,24 @@ builder.Services.AddSwaggerGen(options =>
     // Configure Swagger to use string names for enums instead of integers
     options.UseInlineDefinitionsForEnums();
 
-    // Configure Swagger to handle file uploads
+    // Map IFormFile to binary in schemas
+    options.MapType<Microsoft.AspNetCore.Http.IFormFile>(() => new Microsoft.OpenApi.Models.OpenApiSchema
+    {
+        Type = "string",
+        Format = "binary"
+    });
+
+    options.MapType<List<Microsoft.AspNetCore.Http.IFormFile>>(() => new Microsoft.OpenApi.Models.OpenApiSchema
+    {
+        Type = "array",
+        Items = new Microsoft.OpenApi.Models.OpenApiSchema
+        {
+            Type = "string",
+            Format = "binary"
+        }
+    });
+
+    // Configure Swagger to handle file uploads - must be last
     options.OperationFilter<FileUploadOperationFilter>();
 });
 
@@ -369,6 +386,9 @@ builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
 builder.Services.AddScoped<IGenericEmailService, GenericEmailService>();
 builder.Services.AddScoped<ICloudinaryImageService, CloudinaryImageService>();
+
+// In-memory cache for OAuth temp tokens
+builder.Services.AddMemoryCache();
 
 builder.Services.AddScoped<IUserContextService, UserContextService>();
 builder.Services.AddScoped<TokenService>();
@@ -380,6 +400,7 @@ builder.Services.AddHttpClient<GoogleOAuthService>();
 builder.Services.AddHttpClient<FacebookOAuthService>();
 builder.Services.AddScoped<IOAuthService, GoogleOAuthService>(provider =>
     provider.GetRequiredService<GoogleOAuthService>());
+builder.Services.AddScoped<SoftFocusBackend.Auth.Infrastructure.OAuth.Services.IOAuthTempTokenService, SoftFocusBackend.Auth.Infrastructure.OAuth.Services.OAuthTempTokenService>();
 
 var app = builder.Build();
 
@@ -398,20 +419,166 @@ app.MapHub<ChatHub>("/chatHub");
 
 app.Run();
 
+// Parameter filter to skip IFormFile parameters - they'll be handled by OperationFilter
+public class FormFileParameterFilter : Swashbuckle.AspNetCore.SwaggerGen.IParameterFilter
+{
+    public void Apply(Microsoft.OpenApi.Models.OpenApiParameter parameter, Swashbuckle.AspNetCore.SwaggerGen.ParameterFilterContext context)
+    {
+        var paramType = context.ParameterInfo?.ParameterType;
+
+        // Mark IFormFile parameters to be ignored - the OperationFilter will handle them
+        if (paramType == typeof(Microsoft.AspNetCore.Http.IFormFile) ||
+            paramType == typeof(List<Microsoft.AspNetCore.Http.IFormFile>))
+        {
+            // This parameter will be removed by setting it to null
+            parameter.Schema = null;
+        }
+    }
+}
+
+// Schema filter to handle IFormFile types
+public class FileUploadSchemaFilter : Swashbuckle.AspNetCore.SwaggerGen.ISchemaFilter
+{
+    public void Apply(Microsoft.OpenApi.Models.OpenApiSchema schema, Swashbuckle.AspNetCore.SwaggerGen.SchemaFilterContext context)
+    {
+        if (context.Type == typeof(Microsoft.AspNetCore.Http.IFormFile) ||
+            context.Type == typeof(List<Microsoft.AspNetCore.Http.IFormFile>))
+        {
+            schema.Type = "string";
+            schema.Format = "binary";
+        }
+    }
+}
+
 // Custom Swagger filter for file uploads
 public class FileUploadOperationFilter : Swashbuckle.AspNetCore.SwaggerGen.IOperationFilter
 {
     public void Apply(Microsoft.OpenApi.Models.OpenApiOperation operation, Swashbuckle.AspNetCore.SwaggerGen.OperationFilterContext context)
     {
-        var formFileParameters = context.ApiDescription.ParameterDescriptions
-            .Where(p => p.ModelMetadata?.ModelType == typeof(Microsoft.AspNetCore.Http.IFormFile))
-            .ToList();
+        var hasFormFile = context.ApiDescription.ParameterDescriptions.Any(p =>
+            p.ModelMetadata?.ModelType == typeof(Microsoft.AspNetCore.Http.IFormFile) ||
+            p.ModelMetadata?.ModelType == typeof(List<Microsoft.AspNetCore.Http.IFormFile>));
 
-        if (!formFileParameters.Any())
+        if (!hasFormFile)
             return;
+
+        // Clear existing parameters to avoid conflicts
+        operation.Parameters?.Clear();
+
+        var properties = new Dictionary<string, Microsoft.OpenApi.Models.OpenApiSchema>();
+        var requiredProps = new HashSet<string>();
+
+        foreach (var param in context.ApiDescription.ParameterDescriptions)
+        {
+            var paramType = param.ModelMetadata?.ModelType;
+            var paramName = param.Name;
+
+            if (paramType == typeof(Microsoft.AspNetCore.Http.IFormFile))
+            {
+                properties[paramName] = new Microsoft.OpenApi.Models.OpenApiSchema
+                {
+                    Type = "string",
+                    Format = "binary",
+                    Description = param.ModelMetadata?.Description
+                };
+                // Check if it's required (not nullable)
+                if (!param.ParameterDescriptor.ParameterType.IsGenericType ||
+                    param.ParameterDescriptor.ParameterType.GetGenericTypeDefinition() != typeof(Nullable<>))
+                {
+                    var defaultValue = param.ParameterDescriptor.BindingInfo?.BindingSource;
+                    if (param.ParameterDescriptor is Microsoft.AspNetCore.Mvc.Controllers.ControllerParameterDescriptor controllerParam)
+                    {
+                        if (!controllerParam.ParameterInfo.IsOptional && !controllerParam.ParameterInfo.HasDefaultValue)
+                        {
+                            requiredProps.Add(paramName);
+                        }
+                    }
+                }
+            }
+            else if (paramType == typeof(List<Microsoft.AspNetCore.Http.IFormFile>))
+            {
+                properties[paramName] = new Microsoft.OpenApi.Models.OpenApiSchema
+                {
+                    Type = "array",
+                    Items = new Microsoft.OpenApi.Models.OpenApiSchema
+                    {
+                        Type = "string",
+                        Format = "binary"
+                    },
+                    Description = param.ModelMetadata?.Description
+                };
+                // Lists are typically optional unless explicitly marked
+            }
+            else if (paramType == typeof(string))
+            {
+                properties[paramName] = new Microsoft.OpenApi.Models.OpenApiSchema
+                {
+                    Type = "string",
+                    Description = param.ModelMetadata?.Description
+                };
+                if (param.ParameterDescriptor is Microsoft.AspNetCore.Mvc.Controllers.ControllerParameterDescriptor controllerParam)
+                {
+                    if (!controllerParam.ParameterInfo.IsOptional && !controllerParam.ParameterInfo.HasDefaultValue)
+                    {
+                        requiredProps.Add(paramName);
+                    }
+                }
+            }
+            else if (paramType == typeof(int))
+            {
+                properties[paramName] = new Microsoft.OpenApi.Models.OpenApiSchema
+                {
+                    Type = "integer",
+                    Format = "int32",
+                    Description = param.ModelMetadata?.Description
+                };
+                if (param.ParameterDescriptor is Microsoft.AspNetCore.Mvc.Controllers.ControllerParameterDescriptor controllerParam)
+                {
+                    if (!controllerParam.ParameterInfo.IsOptional && !controllerParam.ParameterInfo.HasDefaultValue)
+                    {
+                        requiredProps.Add(paramName);
+                    }
+                }
+            }
+            else if (paramType == typeof(int?))
+            {
+                properties[paramName] = new Microsoft.OpenApi.Models.OpenApiSchema
+                {
+                    Type = "integer",
+                    Format = "int32",
+                    Nullable = true,
+                    Description = param.ModelMetadata?.Description
+                };
+            }
+            else if (paramType == typeof(bool))
+            {
+                properties[paramName] = new Microsoft.OpenApi.Models.OpenApiSchema
+                {
+                    Type = "boolean",
+                    Description = param.ModelMetadata?.Description
+                };
+                if (param.ParameterDescriptor is Microsoft.AspNetCore.Mvc.Controllers.ControllerParameterDescriptor controllerParam)
+                {
+                    if (!controllerParam.ParameterInfo.IsOptional && !controllerParam.ParameterInfo.HasDefaultValue)
+                    {
+                        requiredProps.Add(paramName);
+                    }
+                }
+            }
+            else if (paramType == typeof(bool?))
+            {
+                properties[paramName] = new Microsoft.OpenApi.Models.OpenApiSchema
+                {
+                    Type = "boolean",
+                    Nullable = true,
+                    Description = param.ModelMetadata?.Description
+                };
+            }
+        }
 
         operation.RequestBody = new Microsoft.OpenApi.Models.OpenApiRequestBody
         {
+            Required = requiredProps.Any(),
             Content = new Dictionary<string, Microsoft.OpenApi.Models.OpenApiMediaType>
             {
                 ["multipart/form-data"] = new Microsoft.OpenApi.Models.OpenApiMediaType
@@ -419,25 +586,11 @@ public class FileUploadOperationFilter : Swashbuckle.AspNetCore.SwaggerGen.IOper
                     Schema = new Microsoft.OpenApi.Models.OpenApiSchema
                     {
                         Type = "object",
-                        Properties = context.ApiDescription.ParameterDescriptions
-                            .ToDictionary(
-                                p => p.Name,
-                                p => p.ModelMetadata?.ModelType == typeof(Microsoft.AspNetCore.Http.IFormFile)
-                                    ? new Microsoft.OpenApi.Models.OpenApiSchema { Type = "string", Format = "binary" }
-                                    : new Microsoft.OpenApi.Models.OpenApiSchema { Type = "boolean" }
-                            ),
-                        Required = formFileParameters.Select(p => p.Name).ToHashSet()
+                        Properties = properties,
+                        Required = requiredProps
                     }
                 }
             }
         };
-
-        foreach (var parameter in operation.Parameters.ToList())
-        {
-            if (formFileParameters.Any(p => p.Name == parameter.Name))
-            {
-                operation.Parameters.Remove(parameter);
-            }
-        }
     }
 }

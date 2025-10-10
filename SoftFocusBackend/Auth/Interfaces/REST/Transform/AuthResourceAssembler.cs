@@ -1,5 +1,6 @@
 using SoftFocusBackend.Auth.Domain.Model.Commands;
 using SoftFocusBackend.Auth.Domain.Model.ValueObjects;
+using SoftFocusBackend.Auth.Domain.Services;
 using SoftFocusBackend.Auth.Interfaces.REST.Resources;
 
 namespace SoftFocusBackend.Auth.Interfaces.REST.Transform;
@@ -106,5 +107,87 @@ public static class AuthResourceAssembler
             resource.Specialties,
             ipAddress,
             userAgent);
+    }
+
+    // New registration assemblers
+    public static RegisterGeneralUserCommand ToCommand(RegisterGeneralUserResource resource, string? ipAddress = null, string? userAgent = null)
+    {
+        return new RegisterGeneralUserCommand(
+            resource.FirstName,
+            resource.LastName,
+            resource.Email,
+            resource.Password,
+            resource.AcceptsPrivacyPolicy,
+            ipAddress,
+            userAgent);
+    }
+
+    public static RegisterPsychologistCommand ToCommand(RegisterPsychologistResource resource, string? ipAddress = null, string? userAgent = null)
+    {
+        return new RegisterPsychologistCommand(
+            resource.FirstName,
+            resource.LastName,
+            resource.Email,
+            resource.Password,
+            resource.ProfessionalLicense,
+            resource.YearsOfExperience,
+            resource.CollegiateRegion,
+            resource.Specialties,
+            resource.University,
+            resource.GraduationYear,
+            resource.AcceptsPrivacyPolicy,
+            resource.LicenseDocumentUrl,
+            resource.DiplomaDocumentUrl,
+            resource.DniDocumentUrl,
+            resource.CertificationDocumentUrls,
+            ipAddress,
+            userAgent);
+    }
+
+    // OAuth verification assemblers
+    public static VerifyOAuthCommand ToCommand(OAuthVerifyResource resource, string? ipAddress = null, string? userAgent = null)
+    {
+        return new VerifyOAuthCommand(
+            resource.Provider,
+            resource.AccessToken,
+            resource.RefreshToken,
+            resource.ExpiresAt ?? DateTime.UtcNow.AddHours(1),
+            ipAddress,
+            userAgent);
+    }
+
+    public static CompleteOAuthRegistrationCommand ToCommand(OAuthCompleteRegistrationResource resource, string email, string fullName, string provider, string? ipAddress = null, string? userAgent = null)
+    {
+        return new CompleteOAuthRegistrationCommand(
+            email,
+            fullName,
+            provider,
+            resource.UserType,
+            resource.AcceptsPrivacyPolicy,
+            resource.ProfessionalLicense,
+            resource.YearsOfExperience,
+            resource.CollegiateRegion,
+            resource.Specialties,
+            resource.University,
+            resource.GraduationYear,
+            resource.LicenseDocumentUrl,
+            resource.DiplomaDocumentUrl,
+            resource.DniDocumentUrl,
+            resource.CertificationDocumentUrls,
+            ipAddress,
+            userAgent);
+    }
+
+    public static OAuthVerificationResponse ToResource(OAuthVerificationResult result)
+    {
+        return new OAuthVerificationResponse
+        {
+            Email = result.Email,
+            FullName = result.FullName,
+            Provider = result.Provider,
+            TempToken = result.TempToken,
+            NeedsRegistration = result.NeedsRegistration,
+            ExistingUserType = result.ExistingUserType
+        };
     }
 }

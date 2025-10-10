@@ -53,6 +53,32 @@ jobs:
             FacebookOAuthSettings__AppId=${{ secrets.FACEBOOK_APP_ID }}
             FacebookOAuthSettings__AppSecret=${{ secrets.FACEBOOK_APP_SECRET }}
             
+            # Gemini API
+            GeminiSettings__ApiKey=${{ secrets.GEMINI_API_KEY }}
+            GeminiSettings__Model=${{ secrets.GEMINI_MODEL }}
+            GeminiSettings__MaxTokens=${{ secrets.GEMINI_MAX_TOKENS }}
+            
+            # Hugging Face API
+            HuggingFaceSettings__ApiToken=${{ secrets.HUGGINGFACE_API_TOKEN }}
+            HuggingFaceSettings__ModelId=${{ secrets.HUGGINGFACE_MODEL_ID }}
+            
+            # TMDB
+            TMDB__ApiKey=${{ secrets.TMDB_API_KEY }}
+            
+            # Spotify
+            Spotify__ClientId=${{ secrets.SPOTIFY_CLIENT_ID }}
+            Spotify__ClientSecret=${{ secrets.SPOTIFY_CLIENT_SECRET }}
+            
+            # OpenWeather
+            OpenWeather__ApiKey=${{ secrets.OPENWEATHER_API_KEY }}
+            
+            # YouTube
+            YouTube__ApiKey=${{ secrets.YOUTUBE_API_KEY }}
+            
+            # Foursquare
+            Foursquare__ApiKey=${{ secrets.FOURSQUARE_API_KEY }}
+            
+
             # Production Environment
             ASPNETCORE_ENVIRONMENT=Production
             EOF
