@@ -152,7 +152,7 @@ public class PsychologistVerificationService : IPsychologistVerificationService
                licenseNumber.Length == 7 && 
                licenseNumber[3..].All(char.IsDigit);
     }
-
+    
     private static bool ValidateGenericLicenseFormat(string licenseNumber)
     {
         return licenseNumber.Length >= 3 && 
@@ -160,3 +160,4 @@ public class PsychologistVerificationService : IPsychologistVerificationService
                licenseNumber.Any(char.IsDigit);
     }
 }
+
