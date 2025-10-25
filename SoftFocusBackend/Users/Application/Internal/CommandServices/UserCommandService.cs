@@ -32,7 +32,56 @@ public class UserCommandService : IUserCommandService
         _emailService = emailService ?? throw new ArgumentNullException(nameof(emailService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
+    /*Ejemplo de test para UserCommandService
 
+Objetivo: Verificar que la creación de un usuario válido llame a los servicios correctos y retorne un usuario.
+
+Escenario: Crear un usuario normal (no psicólogo) con datos válidos.
+
+Preparación:
+
+Crear mocks de:
+
+IUserRepository
+
+IUserDomainService
+
+IAuthNotificationService
+
+ICloudinaryImageService
+
+IGenericEmailService
+
+ILogger<UserCommandService>
+
+Configurar IUserDomainService.IsEmailUniqueAsync para que retorne true.
+
+Configurar IUserDomainService.CreateUserAsync para que retorne un objeto User simulado.
+
+Ejecución:
+
+Llamar al método HandleCreateUserAsync con un CreateUserCommand válido (email, password, nombre completo, tipo de usuario).
+
+Verificación:
+
+Confirmar que:
+
+_userRepository.AddAsync se llamó exactamente una vez con el usuario.
+
+_authNotificationService.NotifyUserCreatedAsync se llamó con los datos correctos.
+
+El resultado del método no es null.
+
+El objeto retornado tiene el mismo email y nombre completo que el command.
+
+Resultado esperado:
+
+Usuario creado exitosamente.
+
+Servicios externos llamados correctamente.
+
+Log de información registrado.*/
+    
     public async Task<User?> HandleCreateUserAsync(CreateUserCommand command)
     {
         try
