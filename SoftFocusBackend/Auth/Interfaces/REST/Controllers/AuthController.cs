@@ -464,19 +464,19 @@ public class AuthController : ControllerBase
     [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(object), StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> CompleteOAuthRegistration(
-        string tempToken,
-        string userType,
-        bool acceptsPrivacyPolicy,
-        string? professionalLicense = null,
-        int? yearsOfExperience = null,
-        string? collegiateRegion = null,
-        string? specialties = null, // comma-separated
-        string? university = null,
-        int? graduationYear = null,
-        IFormFile? licenseDocument = null,
-        IFormFile? diplomaDocument = null,
-        IFormFile? dniDocument = null,
-        List<IFormFile>? certificationDocuments = null)
+        [FromForm] string tempToken,
+        [FromForm] string userType,
+        [FromForm] bool acceptsPrivacyPolicy,
+        [FromForm] string? professionalLicense = null,
+        [FromForm] int? yearsOfExperience = null,
+        [FromForm] string? collegiateRegion = null,
+        [FromForm] string? specialties = null, // comma-separated
+        [FromForm] string? university = null,
+        [FromForm] int? graduationYear = null,
+        [FromForm] IFormFile? licenseDocument = null,
+        [FromForm] IFormFile? diplomaDocument = null,
+        [FromForm] IFormFile? dniDocument = null,
+        [FromForm] List<IFormFile>? certificationDocuments = null)
     {
         try
         {
@@ -628,6 +628,7 @@ public class AuthController : ControllerBase
             }
 
             var command = new CompleteOAuthRegistrationCommand(
+                tempToken,
                 oauthTempToken.Email,
                 oauthTempToken.FullName,
                 oauthTempToken.Provider,

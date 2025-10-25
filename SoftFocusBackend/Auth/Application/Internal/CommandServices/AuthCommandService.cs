@@ -429,7 +429,7 @@ public class AuthCommandService : IAuthCommandService
             }
 
             // Validate temp token
-            var tempToken = await _oauthTempTokenService.ValidateAndRetrieveTokenAsync(command.Email + command.Provider);
+            var tempToken = await _oauthTempTokenService.ValidateAndRetrieveTokenAsync(command.TempToken);
             if (tempToken == null)
             {
                 _logger.LogWarning("Invalid or expired temp token for OAuth registration: {Email}", command.Email);

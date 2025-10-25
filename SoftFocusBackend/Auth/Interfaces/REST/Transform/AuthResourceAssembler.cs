@@ -156,9 +156,10 @@ public static class AuthResourceAssembler
             userAgent);
     }
 
-    public static CompleteOAuthRegistrationCommand ToCommand(OAuthCompleteRegistrationResource resource, string email, string fullName, string provider, string? ipAddress = null, string? userAgent = null)
+    public static CompleteOAuthRegistrationCommand ToCommand(OAuthCompleteRegistrationResource resource, string tempToken, string email, string fullName, string provider, string? ipAddress = null, string? userAgent = null)
     {
         return new CompleteOAuthRegistrationCommand(
+            tempToken,
             email,
             fullName,
             provider,

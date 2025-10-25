@@ -2,6 +2,7 @@ namespace SoftFocusBackend.Auth.Domain.Model.Commands;
 
 public record CompleteOAuthRegistrationCommand
 {
+    public string TempToken { get; init; }
     public string Email { get; init; }
     public string FullName { get; init; }
     public string Provider { get; init; }
@@ -25,6 +26,7 @@ public record CompleteOAuthRegistrationCommand
     public string? UserAgent { get; init; }
 
     public CompleteOAuthRegistrationCommand(
+        string tempToken,
         string email,
         string fullName,
         string provider,
@@ -43,6 +45,7 @@ public record CompleteOAuthRegistrationCommand
         string? ipAddress = null,
         string? userAgent = null)
     {
+        TempToken = tempToken;
         Email = email;
         FullName = fullName;
         Provider = provider;
