@@ -51,7 +51,15 @@ public class AuthCommandService : IAuthCommandService
                 return null;
             }
 
-            _logger.LogInformation("User authenticated successfully: {UserId} - {Email}", 
+            // Check if psychologist is verified
+            if (authenticatedUser.IsPsychologist() && authenticatedUser.IsVerified == false)
+            {
+                _logger.LogWarning("Login denied - psychologist not verified: {UserId} - {Email}",
+                    authenticatedUser.Id, authenticatedUser.Email);
+                throw new UnauthorizedAccessException("Your account is pending verification. Please wait for admin approval.");
+            }
+
+            _logger.LogInformation("User authenticated successfully: {UserId} - {Email}",
                 authenticatedUser.Id, authenticatedUser.Email);
 
             var authToken = _tokenService.GenerateToken(authenticatedUser);
@@ -73,6 +81,11 @@ public class AuthCommandService : IAuthCommandService
 
             _logger.LogInformation("Sign-in completed successfully for user: {UserId}", authenticatedUser.Id);
             return authToken;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // Re-throw to let controller handle it
+            throw;
         }
         catch (Exception ex)
         {
@@ -318,7 +331,15 @@ public class AuthCommandService : IAuthCommandService
                 command.GetFullName(),
                 "Psychologist",
                 command.ProfessionalLicense,
-                command.Specialties);
+                command.Specialties,
+                command.CollegiateRegion,
+                command.University,
+                command.GraduationYear,
+                command.YearsOfExperience,
+                command.LicenseDocumentUrl,
+                command.DiplomaDocumentUrl,
+                command.DniDocumentUrl,
+                command.CertificationDocumentUrls);
 
             if (user == null)
             {
@@ -360,7 +381,15 @@ public class AuthCommandService : IAuthCommandService
 
             if (existingUser != null)
             {
-                // User exists - return info to proceed with direct login
+                // User exists - check if psychologist is verified
+                if (existingUser.IsPsychologist() && existingUser.IsVerified == false)
+                {
+                    _logger.LogWarning("OAuth login denied - psychologist not verified: {UserId} - {Email}",
+                        existingUser.Id, existingUser.Email);
+                    throw new UnauthorizedAccessException("Your account is pending verification. Please wait for admin approval.");
+                }
+
+                // User exists and verified (or not a psychologist) - proceed with login
                 _logger.LogInformation("OAuth user already exists: {Email}, proceeding with login", userInfo.Value.Email);
 
                 var authToken = _tokenService.GenerateToken(existingUser);
@@ -409,6 +438,11 @@ public class AuthCommandService : IAuthCommandService
                 ExistingUserType = null
             };
         }
+        catch (UnauthorizedAccessException)
+        {
+            // Re-throw to let controller handle it
+            throw;
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error processing OAuth verification for provider: {Provider}", command.Provider.Name);
@@ -443,17 +477,25 @@ public class AuthCommandService : IAuthCommandService
             {
                 user = await _userContextService.CreateUserAsync(
                     command.Email,
-                    null, // OAuth users don't have password
+                    null,
                     command.FullName,
                     "Psychologist",
                     command.ProfessionalLicense,
-                    command.Specialties);
+                    command.Specialties,
+                    command.CollegiateRegion,
+                    command.University,
+                    command.GraduationYear,
+                    command.YearsOfExperience,
+                    command.LicenseDocumentUrl,
+                    command.DiplomaDocumentUrl,
+                    command.DniDocumentUrl,
+                    command.CertificationDocumentUrls);
             }
             else
             {
                 user = await _userContextService.CreateUserAsync(
                     command.Email,
-                    null, // OAuth users don't have password
+                    null,
                     command.FullName,
                     "General");
             }
@@ -469,7 +511,15 @@ public class AuthCommandService : IAuthCommandService
 
             _logger.LogInformation("OAuth user registered successfully: {UserId} - {Email}", user.Id, user.Email);
 
-            // Generate JWT token
+            // If psychologist, they need verification before they can login
+            if (user.IsPsychologist() && user.IsVerified == false)
+            {
+                _logger.LogInformation("Psychologist registered via OAuth but needs verification: {UserId} - {Email}",
+                    user.Id, user.Email);
+                throw new UnauthorizedAccessException("Your psychologist account has been created successfully. Please wait for admin verification.");
+            }
+
+            // Generate JWT token for general users
             var authToken = _tokenService.GenerateToken(user);
 
             // Update last login asynchronously
@@ -488,6 +538,11 @@ public class AuthCommandService : IAuthCommandService
             });
 
             return authToken;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // Re-throw to let controller handle it
+            throw;
         }
         catch (Exception ex)
         {

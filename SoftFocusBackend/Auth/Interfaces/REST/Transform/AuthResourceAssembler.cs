@@ -46,7 +46,8 @@ public static class AuthResourceAssembler
                 IsAdmin = user.IsAdmin(),
                 IsPsychologist = user.IsPsychologist(),
                 IsGeneral = user.IsGeneral()
-            }
+            },
+            IsVerified = user.IsVerified
         };
     }
 

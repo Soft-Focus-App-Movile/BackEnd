@@ -1,6 +1,7 @@
 ﻿using SoftFocusBackend.Therapy.Domain.Model.Aggregates;
 using SoftFocusBackend.Therapy.Domain.Model.Queries;
 using SoftFocusBackend.Therapy.Domain.Repositories;
+using SoftFocusBackend.Therapy.Domain.Model.ValueObjects;
 
 namespace SoftFocusBackend.Therapy.Application.Internal.QueryServices
 {
@@ -27,7 +28,6 @@ namespace SoftFocusBackend.Therapy.Application.Internal.QueryServices
                     Id = rel.Id,
                     PsychologistId = rel.PsychologistId,
                     PatientId = rel.PatientId,
-                    // PatientName, Age, ProfilePhotoUrl would need integration with User context
                     Status = rel.Status,
                     StartDate = rel.StartDate,
                     SessionCount = rel.SessionCount
@@ -35,6 +35,26 @@ namespace SoftFocusBackend.Therapy.Application.Internal.QueryServices
             }
 
             return directories;
+        }
+
+        public async Task<object?> GetMyRelationship(GetMyRelationshipQuery query)
+        {
+            var relationships = await _relationshipRepository.GetByPatientIdAsync(query.PatientId);
+            var activeRelationship = relationships.FirstOrDefault(r => r.Status == TherapyStatus.Active && r.IsActive);
+
+            if (activeRelationship == null)
+                return null;
+
+            return new
+            {
+                id = activeRelationship.Id,
+                psychologistId = activeRelationship.PsychologistId,
+                patientId = activeRelationship.PatientId,
+                startDate = activeRelationship.StartDate,
+                status = activeRelationship.Status.ToString(),
+                isActive = activeRelationship.IsActive,
+                sessionCount = activeRelationship.SessionCount
+            };
         }
     }
 }

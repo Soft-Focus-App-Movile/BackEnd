@@ -8,7 +8,7 @@ namespace SoftFocusBackend.Users.Infrastructure.Persistence.MongoDB.Repositories
 
 public class PsychologistRepository : BaseRepository<PsychologistUser>, IPsychologistRepository
 {
-    public PsychologistRepository(MongoDbContext context) : base(context, "psychologists")
+    public PsychologistRepository(MongoDbContext context) : base(context, "users")
     {
     }
 

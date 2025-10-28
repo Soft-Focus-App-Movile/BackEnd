@@ -45,13 +45,18 @@ public class UserContextService : IUserContextService
                 return null;
             }
 
+            bool? isVerified = user is SoftFocusBackend.Users.Domain.Model.Aggregates.PsychologistUser psychologist
+                ? psychologist.IsVerified
+                : null;
+
             return new AuthenticatedUser(
                 user.Id,
                 user.FullName,
                 user.Email,
                 user.UserType.ToString(),
                 user.ProfileImageUrl,
-                user.LastLogin
+                user.LastLogin,
+                isVerified
             );
         }
         catch (Exception ex)
@@ -69,13 +74,18 @@ public class UserContextService : IUserContextService
             if (user == null || !user.IsActive)
                 return null;
 
+            bool? isVerified = user is SoftFocusBackend.Users.Domain.Model.Aggregates.PsychologistUser psychologist
+                ? psychologist.IsVerified
+                : null;
+
             return new AuthenticatedUser(
                 user.Id,
                 user.FullName,
                 user.Email,
                 user.UserType.ToString(),
                 user.ProfileImageUrl,
-                user.LastLogin
+                user.LastLogin,
+                isVerified
             );
         }
         catch (Exception ex)
@@ -93,13 +103,18 @@ public class UserContextService : IUserContextService
             if (user == null || !user.IsActive)
                 return null;
 
+            bool? isVerified = user is SoftFocusBackend.Users.Domain.Model.Aggregates.PsychologistUser psychologist
+                ? psychologist.IsVerified
+                : null;
+
             return new AuthenticatedUser(
                 user.Id,
                 user.FullName,
                 user.Email,
                 user.UserType.ToString(),
                 user.ProfileImageUrl,
-                user.LastLogin
+                user.LastLogin,
+                isVerified
             );
         }
         catch (Exception ex)
@@ -119,13 +134,18 @@ public class UserContextService : IUserContextService
             var existingUser = await _userFacade.GetUserByEmailAsync(email);
             if (existingUser != null)
             {
+                bool? isVerifiedExisting = existingUser is SoftFocusBackend.Users.Domain.Model.Aggregates.PsychologistUser psychologistExisting
+                    ? psychologistExisting.IsVerified
+                    : null;
+
                 return new AuthenticatedUser(
                     existingUser.Id,
                     existingUser.FullName,
                     existingUser.Email,
                     existingUser.UserType.ToString(),
                     existingUser.ProfileImageUrl,
-                    existingUser.LastLogin
+                    existingUser.LastLogin,
+                    isVerifiedExisting
                 );
             }
 
@@ -137,13 +157,18 @@ public class UserContextService : IUserContextService
                 return null;
             }
 
+            bool? isVerifiedNew = newUser is SoftFocusBackend.Users.Domain.Model.Aggregates.PsychologistUser psychologistNew
+                ? psychologistNew.IsVerified
+                : null;
+
             return new AuthenticatedUser(
                 newUser.Id,
                 newUser.FullName,
                 newUser.Email,
                 newUser.UserType.ToString(),
                 newUser.ProfileImageUrl,
-                newUser.LastLogin
+                newUser.LastLogin,
+                isVerifiedNew
             );
         }
         catch (Exception ex)
@@ -224,24 +249,33 @@ public class UserContextService : IUserContextService
         }
     }
     
-    public async Task<AuthenticatedUser?> CreateUserAsync(string email, string password, string fullName, string userType, 
-        string? professionalLicense = null, string[]? specialties = null)
+    public async Task<AuthenticatedUser?> CreateUserAsync(string email, string password, string fullName, string userType,
+        string? professionalLicense = null, string[]? specialties = null, string? collegiateRegion = null,
+        string? university = null, int? graduationYear = null, int? yearsOfExperience = null,
+        string? licenseDocumentUrl = null, string? diplomaCertificateUrl = null,
+        string? identityDocumentUrl = null, string[]? additionalCertificatesUrls = null)
     {
         try
         {
-            var user = await _userFacade.CreateUserAsync(email, password, fullName, userType, 
-                professionalLicense, specialties);
-            
+            var user = await _userFacade.CreateUserAsync(email, password, fullName, userType,
+                professionalLicense, specialties, collegiateRegion, university, graduationYear, yearsOfExperience,
+                licenseDocumentUrl, diplomaCertificateUrl, identityDocumentUrl, additionalCertificatesUrls);
+
             if (user == null)
                 return null;
-            
+
+            bool? isVerified = user is SoftFocusBackend.Users.Domain.Model.Aggregates.PsychologistUser psychologist
+                ? psychologist.IsVerified
+                : null;
+
             return new AuthenticatedUser(
                 user.Id,
                 user.FullName,
                 user.Email,
                 user.UserType.ToString(),
                 user.ProfileImageUrl,
-                user.LastLogin
+                user.LastLogin,
+                isVerified
             );
         }
         catch (Exception ex)

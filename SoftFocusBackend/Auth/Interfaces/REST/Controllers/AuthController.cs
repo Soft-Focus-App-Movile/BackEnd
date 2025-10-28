@@ -141,33 +141,34 @@ public class AuthController : ControllerBase
     [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(object), StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> RegisterPsychologist(
-        string firstName,
-        string lastName,
-        string email,
-        string password,
-        string professionalLicense,
-        int yearsOfExperience,
-        string collegiateRegion,
-        string university,
-        int graduationYear,
-        bool acceptsPrivacyPolicy,
+        [FromForm] string firstName,
+        [FromForm] string lastName,
+        [FromForm] string email,
+        [FromForm] string password,
+        [FromForm] string professionalLicense,
+        [FromForm] int yearsOfExperience,
+        [FromForm] string collegiateRegion,
+        [FromForm] string university,
+        [FromForm] int graduationYear,
+        [FromForm] bool acceptsPrivacyPolicy,
         IFormFile licenseDocument,
         IFormFile diplomaDocument,
         IFormFile dniDocument,
-        string? specialties = null, // comma-separated, optional
+        [FromForm] string? specialties = null, // comma-separated, optional
         List<IFormFile>? certificationDocuments = null) // optional
     {
         try
         {
             _logger.LogInformation("Psychologist registration attempt for email: {Email}", email);
 
+            // STEP 1: Validate ModelState
             if (!ModelState.IsValid)
             {
                 _logger.LogWarning("Invalid psychologist registration request for email: {Email}", email);
                 return BadRequest(AuthResourceAssembler.ToErrorResponse("Invalid request data"));
             }
 
-            // Validate all required documents are provided
+            // STEP 2: Validate all required documents are provided
             if (licenseDocument == null)
             {
                 return BadRequest(AuthResourceAssembler.ToErrorResponse("License document is required"));
@@ -180,9 +181,52 @@ public class AuthController : ControllerBase
             {
                 return BadRequest(AuthResourceAssembler.ToErrorResponse("DNI document is required"));
             }
-            // Certification documents are optional
 
-            // Upload documents to Cloudinary
+            // STEP 3: Parse specialties (optional)
+            string[]? specialtiesArray = null;
+            if (!string.IsNullOrWhiteSpace(specialties))
+            {
+                specialtiesArray = specialties.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                                              .Select(s => s.Trim())
+                                              .ToArray();
+            }
+
+            // STEP 4: Validate command data BEFORE uploading files
+            var tempCommand = new RegisterPsychologistCommand(
+                firstName,
+                lastName,
+                email,
+                password,
+                professionalLicense,
+                yearsOfExperience,
+                collegiateRegion,
+                specialtiesArray,
+                university,
+                graduationYear,
+                acceptsPrivacyPolicy,
+                null, // No document URLs yet
+                null,
+                null,
+                null,
+                GetClientIpAddress(),
+                GetClientUserAgent());
+
+            if (!tempCommand.IsValid())
+            {
+                _logger.LogWarning("Invalid psychologist registration data for email: {Email}", email);
+                return BadRequest(AuthResourceAssembler.ToErrorResponse("Invalid registration data. Please check all fields."));
+            }
+
+            // STEP 5: Check if email already exists BEFORE uploading files
+            var userContextService = HttpContext.RequestServices.GetRequiredService<SoftFocusBackend.Auth.Application.ACL.Services.IUserContextService>();
+            var existingUser = await userContextService.GetUserByEmailAsync(email);
+            if (existingUser != null)
+            {
+                _logger.LogWarning("Registration failed - email already in use: {Email}", email);
+                return BadRequest(AuthResourceAssembler.ToErrorResponse("Registration failed. Email already in use."));
+            }
+
+            // STEP 6: Now upload documents to Cloudinary (only after validation passes)
             var cloudinaryService = HttpContext.RequestServices.GetRequiredService<SoftFocusBackend.Shared.Infrastructure.ExternalServices.Cloudinary.Services.ICloudinaryImageService>();
 
             string licenseDocumentUrl;
@@ -202,7 +246,7 @@ public class AuthController : ControllerBase
                     return BadRequest(AuthResourceAssembler.ToErrorResponse($"License document: {validation.ErrorMessage}"));
                 }
 
-                licenseDocumentUrl = await cloudinaryService.UploadDocumentAsync(licenseBytes, licenseDocument.FileName, "psychologist-documents/licenses");
+                licenseDocumentUrl = await cloudinaryService.UploadDocumentAsync(licenseBytes, licenseDocument.FileName, "softfocus/psychologist_documents/licenses");
             }
 
             // Upload diploma document
@@ -217,7 +261,7 @@ public class AuthController : ControllerBase
                     return BadRequest(AuthResourceAssembler.ToErrorResponse($"Diploma document: {validation.ErrorMessage}"));
                 }
 
-                diplomaDocumentUrl = await cloudinaryService.UploadDocumentAsync(diplomaBytes, diplomaDocument.FileName, "psychologist-documents/diplomas");
+                diplomaDocumentUrl = await cloudinaryService.UploadDocumentAsync(diplomaBytes, diplomaDocument.FileName, "softfocus/psychologist_documents/diplomas");
             }
 
             // Upload DNI document
@@ -232,7 +276,7 @@ public class AuthController : ControllerBase
                     return BadRequest(AuthResourceAssembler.ToErrorResponse($"DNI document: {validation.ErrorMessage}"));
                 }
 
-                dniDocumentUrl = await cloudinaryService.UploadDocumentAsync(dniBytes, dniDocument.FileName, "psychologist-documents/dni");
+                dniDocumentUrl = await cloudinaryService.UploadDocumentAsync(dniBytes, dniDocument.FileName, "softfocus/psychologist_documents/dni");
             }
 
             // Upload certification documents (optional)
@@ -250,21 +294,12 @@ public class AuthController : ControllerBase
                         return BadRequest(AuthResourceAssembler.ToErrorResponse($"Certification document: {validation.ErrorMessage}"));
                     }
 
-                    var certUrl = await cloudinaryService.UploadDocumentAsync(certBytes, certDoc.FileName, "psychologist-documents/certifications");
+                    var certUrl = await cloudinaryService.UploadDocumentAsync(certBytes, certDoc.FileName, "softfocus/psychologist_documents/certifications");
                     certificationDocumentUrls.Add(certUrl);
                 }
             }
 
-            // Parse specialties (optional)
-            string[]? specialtiesArray = null;
-            if (!string.IsNullOrWhiteSpace(specialties))
-            {
-                specialtiesArray = specialties.Split(',', StringSplitOptions.RemoveEmptyEntries)
-                                              .Select(s => s.Trim())
-                                              .ToArray();
-            }
-
-            // Create command with uploaded document URLs
+            // STEP 7: Create final command with document URLs
             var command = new RegisterPsychologistCommand(
                 firstName,
                 lastName,
@@ -284,18 +319,13 @@ public class AuthController : ControllerBase
                 GetClientIpAddress(),
                 GetClientUserAgent());
 
-            if (!command.IsValid())
-            {
-                _logger.LogWarning("Invalid psychologist registration data for email: {Email}", email);
-                return BadRequest(AuthResourceAssembler.ToErrorResponse("Invalid registration data"));
-            }
-
+            // STEP 8: Create the user
             var userId = await _authCommandService.HandleRegisterPsychologistAsync(command);
 
             if (userId == null)
             {
                 _logger.LogWarning("Psychologist registration failed for email: {Email}", email);
-                return BadRequest(AuthResourceAssembler.ToErrorResponse("Registration failed. Email may already be in use."));
+                return BadRequest(AuthResourceAssembler.ToErrorResponse("Registration failed. An unexpected error occurred."));
             }
 
             _logger.LogInformation("Psychologist registered successfully: {UserId}", userId);
@@ -358,10 +388,16 @@ public class AuthController : ControllerBase
             var response = AuthResourceAssembler.ToSignInResponse(authToken);
             return Ok(response);
         }
+        catch (UnauthorizedAccessException ex)
+        {
+            // Psychologist pending verification attempting login
+            _logger.LogWarning(ex, "Login denied: {Message}", ex.Message);
+            return Unauthorized(AuthResourceAssembler.ToErrorResponse(ex.Message));
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error during login for email: {Email}", resource.Email);
-            return StatusCode(StatusCodes.Status500InternalServerError, 
+            return StatusCode(StatusCodes.Status500InternalServerError,
                 AuthResourceAssembler.ToErrorResponse("An error occurred during authentication"));
         }
     }
@@ -449,6 +485,12 @@ public class AuthController : ControllerBase
             var response = AuthResourceAssembler.ToResource(result);
             return Ok(response);
         }
+        catch (UnauthorizedAccessException ex)
+        {
+            // Psychologist pending verification attempting OAuth login
+            _logger.LogWarning(ex, "OAuth verification denied: {Message}", ex.Message);
+            return Unauthorized(AuthResourceAssembler.ToErrorResponse(ex.Message));
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error during OAuth verification for provider: {Provider}", resource.Provider);
@@ -473,10 +515,10 @@ public class AuthController : ControllerBase
         [FromForm] string? specialties = null, // comma-separated
         [FromForm] string? university = null,
         [FromForm] int? graduationYear = null,
-        [FromForm] IFormFile? licenseDocument = null,
-        [FromForm] IFormFile? diplomaDocument = null,
-        [FromForm] IFormFile? dniDocument = null,
-        [FromForm] List<IFormFile>? certificationDocuments = null)
+        IFormFile? licenseDocument = null,
+        IFormFile? diplomaDocument = null,
+        IFormFile? dniDocument = null,
+        List<IFormFile>? certificationDocuments = null)
     {
         try
         {
@@ -559,7 +601,7 @@ public class AuthController : ControllerBase
                         return BadRequest(AuthResourceAssembler.ToErrorResponse($"License document: {validation.ErrorMessage}"));
                     }
 
-                    licenseDocumentUrl = await cloudinaryService.UploadDocumentAsync(licenseBytes, licenseDocument.FileName, "psychologist-documents/licenses");
+                    licenseDocumentUrl = await cloudinaryService.UploadDocumentAsync(licenseBytes, licenseDocument.FileName, "softfocus/psychologist_documents/licenses");
                 }
 
                 // Upload diploma document
@@ -574,7 +616,7 @@ public class AuthController : ControllerBase
                         return BadRequest(AuthResourceAssembler.ToErrorResponse($"Diploma document: {validation.ErrorMessage}"));
                     }
 
-                    diplomaDocumentUrl = await cloudinaryService.UploadDocumentAsync(diplomaBytes, diplomaDocument.FileName, "psychologist-documents/diplomas");
+                    diplomaDocumentUrl = await cloudinaryService.UploadDocumentAsync(diplomaBytes, diplomaDocument.FileName, "softfocus/psychologist_documents/diplomas");
                 }
 
                 // Upload DNI document
@@ -589,7 +631,7 @@ public class AuthController : ControllerBase
                         return BadRequest(AuthResourceAssembler.ToErrorResponse($"DNI document: {validation.ErrorMessage}"));
                     }
 
-                    dniDocumentUrl = await cloudinaryService.UploadDocumentAsync(dniBytes, dniDocument.FileName, "psychologist-documents/dni");
+                    dniDocumentUrl = await cloudinaryService.UploadDocumentAsync(dniBytes, dniDocument.FileName, "softfocus/psychologist_documents/dni");
                 }
 
                 // Upload certification documents (optional)
@@ -608,7 +650,7 @@ public class AuthController : ControllerBase
                             return BadRequest(AuthResourceAssembler.ToErrorResponse($"Certification document: {validation.ErrorMessage}"));
                         }
 
-                        var certUrl = await cloudinaryService.UploadDocumentAsync(certBytes, certDoc.FileName, "psychologist-documents/certifications");
+                        var certUrl = await cloudinaryService.UploadDocumentAsync(certBytes, certDoc.FileName, "softfocus/psychologist_documents/certifications");
                         certUrls.Add(certUrl);
                     }
                     certificationDocumentUrls = certUrls.ToArray();
@@ -665,6 +707,12 @@ public class AuthController : ControllerBase
 
             var response = AuthResourceAssembler.ToSignInResponse(authToken);
             return Created($"/api/v1/users/{authToken.GetUserId()}", response);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            // Psychologist pending verification
+            _logger.LogWarning(ex, "OAuth registration completed but access denied: {Message}", ex.Message);
+            return Unauthorized(AuthResourceAssembler.ToErrorResponse(ex.Message));
         }
         catch (Exception ex)
         {

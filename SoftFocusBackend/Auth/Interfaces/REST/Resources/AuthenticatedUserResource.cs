@@ -10,6 +10,7 @@ public record AuthenticatedUserResource
     public DateTime? LastLogin { get; init; }
     public string RoleDisplay { get; init; } = string.Empty;
     public UserCapabilitiesResource Capabilities { get; init; } = new();
+    public bool? IsVerified { get; init; }
 }
 
 public record UserCapabilitiesResource

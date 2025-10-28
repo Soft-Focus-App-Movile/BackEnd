@@ -103,7 +103,7 @@ Log de información registrado.*/
             User user;
             if (command.IsPsychologist())
             {
-                if (string.IsNullOrWhiteSpace(command.ProfessionalLicense) || 
+                if (string.IsNullOrWhiteSpace(command.ProfessionalLicense) ||
                     command.Specialties == null || command.Specialties.Count == 0)
                 {
                     _logger.LogWarning("Invalid psychologist data for email: {Email}", command.Email);
@@ -111,13 +111,16 @@ Log de información registrado.*/
                 }
 
                 user = await _userDomainService.CreatePsychologistAsync(
-                    command.Email, 
-                    command.PasswordHash, 
+                    command.Email,
+                    command.PasswordHash,
                     command.FullName,
-                    command.ProfessionalLicense, 
-                    "Pending College Verification", 
-                    command.Specialties, 
-                    0);
+                    command.ProfessionalLicense,
+                    "Pending College Verification",
+                    command.Specialties,
+                    command.YearsOfExperience ?? 0,
+                    command.CollegiateRegion,
+                    command.University,
+                    command.GraduationYear);
             }
             else
             {
