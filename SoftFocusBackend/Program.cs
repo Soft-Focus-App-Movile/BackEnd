@@ -1,5 +1,6 @@
 using DotNetEnv;
 using SoftFocusBackend.Shared.Domain.Repositories;
+using SoftFocusBackend.Shared.Infrastructure.Persistence;
 using SoftFocusBackend.Shared.Infrastructure.Persistence.MongoDB.Configuration;
 using SoftFocusBackend.Shared.Infrastructure.Persistence.MongoDB.Context;
 using SoftFocusBackend.Shared.Infrastructure.Persistence.MongoDB.Repositories;
@@ -403,6 +404,7 @@ builder.Services.AddSwaggerGen(options =>
 
 builder.Services.AddSingleton<MongoDbContext>();
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+builder.Services.AddScoped<DatabaseSeeder>();
 
 builder.Services.AddScoped<IGenericEmailService, GenericEmailService>();
 builder.Services.AddScoped<ICloudinaryImageService, CloudinaryImageService>();
@@ -446,6 +448,19 @@ using (var scope = app.Services.CreateScope())
     catch (Exception ex)
     {
         logger.LogWarning(ex, "Could not create admin user on startup");
+    }
+
+    if (app.Environment.IsDevelopment())
+    {
+        try
+        {
+            var seeder = scope.ServiceProvider.GetRequiredService<DatabaseSeeder>();
+            await seeder.SeedAsync();
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Could not seed database on startup");
+        }
     }
 }
 
