@@ -42,11 +42,23 @@ namespace SoftFocusBackend.Therapy.Interfaces.REST.Controllers
         public async Task<IActionResult> GetPatientDirectory()
         {
             var psychologistId = GetCurrentUserId();
-            // Validate user is psychologist via ACL or claims
 
             var query = new GetPatientDirectoryQuery { PsychologistId = psychologistId };
             var patients = await _directoryService.Handle(query);
             return Ok(patients);
+        }
+
+        [HttpGet("my-relationship")]
+        public async Task<IActionResult> GetMyRelationship()
+        {
+            var patientId = GetCurrentUserId();
+            var query = new GetMyRelationshipQuery { PatientId = patientId };
+            var relationship = await _directoryService.GetMyRelationship(query);
+
+            if (relationship == null)
+                return Ok(new { hasRelationship = false, relationship = (object)null });
+
+            return Ok(new { hasRelationship = true, relationship });
         }
 
         private string GetCurrentUserId()

@@ -206,14 +206,19 @@ public class UserFacade : IUserFacade
     }
 
     // ---------------------- CREACIÓN DE USUARIOS ----------------------
-    public async Task<User?> CreateUserAsync(string email, string password, string fullName, string userType, 
-        string? professionalLicense = null, string[]? specialties = null)
+    public async Task<User?> CreateUserAsync(string email, string password, string fullName, string userType,
+        string? professionalLicense = null, string[]? specialties = null, string? collegiateRegion = null,
+        string? university = null, int? graduationYear = null, int? yearsOfExperience = null,
+        string? licenseDocumentUrl = null, string? diplomaCertificateUrl = null,
+        string? identityDocumentUrl = null, string[]? additionalCertificatesUrls = null)
     {
         try
         {
             _logger.LogDebug("Facade: Creating user with email: {Email}", email);
 
-            var passwordHash = BCrypt.Net.BCrypt.HashPassword(password);
+            var passwordHash = string.IsNullOrWhiteSpace(password)
+                ? "[OAUTH_USER]"
+                : BCrypt.Net.BCrypt.HashPassword(password);
 
             if (!Enum.TryParse<UserType>(userType, out var userTypeEnum))
             {
@@ -234,8 +239,19 @@ public class UserFacade : IUserFacade
                 }
             }
 
-            var command = new CreateUserCommand(email, passwordHash, fullName, userTypeEnum, professionalLicense, specialtiesList);
-            return await _userCommandService.HandleCreateUserAsync(command);
+            var command = new CreateUserCommand(email, passwordHash, fullName, userTypeEnum,
+                professionalLicense, specialtiesList, collegiateRegion, university, graduationYear, yearsOfExperience);
+            var user = await _userCommandService.HandleCreateUserAsync(command);
+
+            if (user != null && user is PsychologistUser psychologist && userTypeEnum == UserType.Psychologist)
+            {
+                var docUrls = additionalCertificatesUrls?.ToList();
+                psychologist.UpdateVerificationDocuments(licenseDocumentUrl, diplomaCertificateUrl,
+                    identityDocumentUrl, docUrls);
+                _userRepository.Update(psychologist);
+            }
+
+            return user;
         }
         catch (Exception ex)
         {

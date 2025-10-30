@@ -111,13 +111,24 @@ public static class UserResourceAssembler
                 {
                     licenseNumber = psychologist.LicenseNumber,
                     professionalCollege = psychologist.ProfessionalCollege,
+                    collegeRegion = psychologist.CollegeRegion,
+                    university = psychologist.University,
+                    graduationYear = psychologist.GraduationYear,
                     specialties = psychologist.Specialties,
                     yearsOfExperience = psychologist.YearsOfExperience,
                     isVerified = psychologist.IsVerified,
                     verificationDate = psychologist.VerificationDate,
                     verifiedBy = psychologist.VerifiedBy,
+                    verificationNotes = psychologist.VerificationNotes,
                     currentPatientsCount = psychologist.CurrentPatientsCount,
-                    isAcceptingNewPatients = psychologist.IsAcceptingNewPatients
+                    isAcceptingNewPatients = psychologist.IsAcceptingNewPatients,
+                    documents = new
+                    {
+                        licenseDocumentUrl = psychologist.LicenseDocumentUrl,
+                        diplomaCertificateUrl = psychologist.DiplomaCertificateUrl,
+                        identityDocumentUrl = psychologist.IdentityDocumentUrl,
+                        additionalCertificatesUrls = psychologist.AdditionalCertificatesUrls
+                    }
                 }
             };
         }

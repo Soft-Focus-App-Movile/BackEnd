@@ -8,8 +8,9 @@ public record AuthenticatedUser
     public string Role { get; init; }
     public string? ProfileImageUrl { get; init; }
     public DateTime? LastLogin { get; init; }
+    public bool? IsVerified { get; init; }
 
-    public AuthenticatedUser(string id, string fullName, string email, string role, string? profileImageUrl = null, DateTime? lastLogin = null)
+    public AuthenticatedUser(string id, string fullName, string email, string role, string? profileImageUrl = null, DateTime? lastLogin = null, bool? isVerified = null)
     {
         if (string.IsNullOrWhiteSpace(id))
             throw new ArgumentException("Id cannot be null or empty.", nameof(id));
@@ -29,6 +30,7 @@ public record AuthenticatedUser
         Role = role.Trim();
         ProfileImageUrl = profileImageUrl?.Trim();
         LastLogin = lastLogin;
+        IsVerified = isVerified;
     }
 
     public bool IsAdmin() => Role.Equals("Admin", StringComparison.OrdinalIgnoreCase);

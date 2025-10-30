@@ -14,6 +14,9 @@ public interface IUserContextService
     Task SendPasswordResetEmailAsync(AuthenticatedUser user, string resetToken);
     Task<bool> ResetUserPasswordAsync(string userId, string newPassword);
     
-    Task<AuthenticatedUser?> CreateUserAsync(string email, string password, string fullName, string userType, 
-        string? professionalLicense = null, string[]? specialties = null);
+    Task<AuthenticatedUser?> CreateUserAsync(string email, string password, string fullName, string userType,
+        string? professionalLicense = null, string[]? specialties = null, string? collegiateRegion = null,
+        string? university = null, int? graduationYear = null, int? yearsOfExperience = null,
+        string? licenseDocumentUrl = null, string? diplomaCertificateUrl = null,
+        string? identityDocumentUrl = null, string[]? additionalCertificatesUrls = null);
 }

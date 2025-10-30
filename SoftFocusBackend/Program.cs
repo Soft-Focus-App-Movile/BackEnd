@@ -1,5 +1,6 @@
 using DotNetEnv;
 using SoftFocusBackend.Shared.Domain.Repositories;
+using SoftFocusBackend.Shared.Infrastructure.Persistence;
 using SoftFocusBackend.Shared.Infrastructure.Persistence.MongoDB.Configuration;
 using SoftFocusBackend.Shared.Infrastructure.Persistence.MongoDB.Context;
 using SoftFocusBackend.Shared.Infrastructure.Persistence.MongoDB.Repositories;
@@ -82,9 +83,29 @@ using SoftFocusBackend.Notification.Infrastructure.Persistence.MongoDB.Repositor
 using SoftFocusBackend.Notification.Infrastructure.Services;
 using Microsoft.AspNetCore.SignalR;
 using SoftFocusBackend.Therapy.Interfaces.REST.Hubs;
+using MongoDB.Bson.Serialization;
+using SoftFocusBackend.Users.Domain.Model.Aggregates;
 
 
 Env.Load();
+
+if (!BsonClassMap.IsClassMapRegistered(typeof(User)))
+{
+    BsonClassMap.RegisterClassMap<User>(cm =>
+    {
+        cm.AutoMap();
+        cm.SetIsRootClass(true);
+        cm.AddKnownType(typeof(PsychologistUser));
+    });
+}
+
+if (!BsonClassMap.IsClassMapRegistered(typeof(PsychologistUser)))
+{
+    BsonClassMap.RegisterClassMap<PsychologistUser>(cm =>
+    {
+        cm.AutoMap();
+    });
+}
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -383,6 +404,7 @@ builder.Services.AddSwaggerGen(options =>
 
 builder.Services.AddSingleton<MongoDbContext>();
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+builder.Services.AddScoped<DatabaseSeeder>();
 
 builder.Services.AddScoped<IGenericEmailService, GenericEmailService>();
 builder.Services.AddScoped<ICloudinaryImageService, CloudinaryImageService>();
@@ -403,6 +425,44 @@ builder.Services.AddScoped<IOAuthService, GoogleOAuthService>(provider =>
 builder.Services.AddScoped<SoftFocusBackend.Auth.Infrastructure.OAuth.Services.IOAuthTempTokenService, SoftFocusBackend.Auth.Infrastructure.OAuth.Services.OAuthTempTokenService>();
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var userContextService = scope.ServiceProvider.GetRequiredService<IUserContextService>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
+    try
+    {
+        var adminExists = await userContextService.GetUserByEmailAsync("admin@softfocus.com");
+        if (adminExists == null)
+        {
+            await userContextService.CreateUserAsync(
+                email: "admin@softfocus.com",
+                password: "Admin123!",
+                fullName: "Admin SoftFocus",
+                userType: "Admin"
+            );
+            logger.LogInformation("Admin user created successfully");
+        }
+    }
+    catch (Exception ex)
+    {
+        logger.LogWarning(ex, "Could not create admin user on startup");
+    }
+
+    if (app.Environment.IsDevelopment())
+    {
+        try
+        {
+            var seeder = scope.ServiceProvider.GetRequiredService<DatabaseSeeder>();
+            await seeder.SeedAsync();
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Could not seed database on startup");
+        }
+    }
+}
 
 app.UseSwagger();
 app.UseSwaggerUI();

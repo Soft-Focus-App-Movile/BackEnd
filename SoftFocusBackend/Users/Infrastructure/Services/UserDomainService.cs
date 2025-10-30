@@ -97,12 +97,13 @@ public class UserDomainService : IUserDomainService
         return user;
     }
 
-    public async Task<PsychologistUser> CreatePsychologistAsync(string email, string passwordHash, string fullName, 
-        string licenseNumber, string professionalCollege, List<PsychologySpecialty> specialties, 
-        int yearsOfExperience)
+    public async Task<PsychologistUser> CreatePsychologistAsync(string email, string passwordHash, string fullName,
+        string licenseNumber, string professionalCollege, List<PsychologySpecialty> specialties,
+        int yearsOfExperience, string? collegiateRegion = null, string? university = null,
+        int? graduationYear = null)
     {
         await Task.CompletedTask;
-        
+
         var psychologist = new PsychologistUser
         {
             Email = email.ToLowerInvariant(),
@@ -111,8 +112,11 @@ public class UserDomainService : IUserDomainService
             UserType = UserType.Psychologist,
             LicenseNumber = licenseNumber,
             ProfessionalCollege = professionalCollege,
+            CollegeRegion = collegiateRegion,
             Specialties = specialties,
             YearsOfExperience = yearsOfExperience,
+            University = university,
+            GraduationYear = graduationYear,
             IsActive = true,
             IsVerified = false,
             CreatedAt = DateTime.UtcNow,

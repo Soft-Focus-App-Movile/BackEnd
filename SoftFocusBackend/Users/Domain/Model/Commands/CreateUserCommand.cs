@@ -10,13 +10,18 @@ public record CreateUserCommand
     public UserType UserType { get; init; }
     public string? ProfessionalLicense { get; init; }
     public List<PsychologySpecialty>? Specialties { get; init; }
+    public string? CollegiateRegion { get; init; }
+    public string? University { get; init; }
+    public int? GraduationYear { get; init; }
+    public int? YearsOfExperience { get; init; }
     public DateTime RequestedAt { get; init; }
     public string? IpAddress { get; init; }
     public string? UserAgent { get; init; }
 
     public CreateUserCommand(string email, string passwordHash, string fullName, UserType userType,
         string? professionalLicense = null, List<PsychologySpecialty>? specialties = null,
-        string? ipAddress = null, string? userAgent = null)
+        string? collegiateRegion = null, string? university = null, int? graduationYear = null,
+        int? yearsOfExperience = null, string? ipAddress = null, string? userAgent = null)
     {
         Email = email?.Trim().ToLowerInvariant() ?? throw new ArgumentNullException(nameof(email));
         PasswordHash = passwordHash ?? throw new ArgumentNullException(nameof(passwordHash));
@@ -24,6 +29,10 @@ public record CreateUserCommand
         UserType = userType;
         ProfessionalLicense = professionalLicense?.Trim();
         Specialties = specialties;
+        CollegiateRegion = collegiateRegion?.Trim();
+        University = university?.Trim();
+        GraduationYear = graduationYear;
+        YearsOfExperience = yearsOfExperience;
         RequestedAt = DateTime.UtcNow;
         IpAddress = ipAddress;
         UserAgent = userAgent;

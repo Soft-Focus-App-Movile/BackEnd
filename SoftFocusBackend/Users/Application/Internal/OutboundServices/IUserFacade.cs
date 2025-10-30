@@ -16,8 +16,11 @@ public interface IUserFacade
     Task<bool> IsEmailAvailableAsync(string email, string? excludeUserId = null);
     Task<UserStats> GetUserStatisticsAsync(DateTime? fromDate = null, DateTime? toDate = null);
     
-    Task<User?> CreateUserAsync(string email, string password, string fullName, string userType, 
-        string? professionalLicense = null, string[]? specialties = null);
+    Task<User?> CreateUserAsync(string email, string password, string fullName, string userType,
+        string? professionalLicense = null, string[]? specialties = null, string? collegiateRegion = null,
+        string? university = null, int? graduationYear = null, int? yearsOfExperience = null,
+        string? licenseDocumentUrl = null, string? diplomaCertificateUrl = null,
+        string? identityDocumentUrl = null, string[]? additionalCertificatesUrls = null);
     
     Task<User?> CreateOAuthUserAsync(string email, string fullName, string? profileImageUrl = null);
     Task<bool> UserExistsAsync(string userId);
