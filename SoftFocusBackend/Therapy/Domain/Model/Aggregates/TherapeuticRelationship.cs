@@ -6,9 +6,6 @@ namespace SoftFocusBackend.Therapy.Domain.Model.Aggregates
 {
     public class TherapeuticRelationship : BaseEntity
     {
-        [BsonElement("therapeutic_relationship_id")]
-        public string Id { get; private set; }
-        
         [BsonElement("psychologist_id")]
         public string PsychologistId { get; private set; }
         
@@ -36,13 +33,13 @@ namespace SoftFocusBackend.Therapy.Domain.Model.Aggregates
         // Constructor for new relationships
         public TherapeuticRelationship(string psychologistId, ConnectionCode connectionCode, string patientId)
         {
-            Id = Guid.NewGuid().ToString();
+            Id = MongoDB.Bson.ObjectId.GenerateNewId().ToString();
             PsychologistId = psychologistId ?? throw new ArgumentNullException(nameof(psychologistId));
             ConnectionCode = connectionCode ?? throw new ArgumentNullException(nameof(connectionCode));
             PatientId = patientId;
             StartDate = DateTime.UtcNow;
-            Status = TherapyStatus.Pending;
-            IsActive = false;
+            Status = TherapyStatus.Active;
+            IsActive = true;
             SessionCount = 0;
         }
 
