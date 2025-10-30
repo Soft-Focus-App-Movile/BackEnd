@@ -27,7 +27,7 @@ private async Task SeedTuContextoAsync()
     _logger.LogInformation("Seeding tu contexto...");
 
     var items = new List<TuEntidad>
-    {
+    {[Interfaces](../../Interfaces)
         new TuEntidad
         {
             // Tus datos aquí

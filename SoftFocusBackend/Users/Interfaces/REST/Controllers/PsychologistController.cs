@@ -207,6 +207,24 @@ public class PsychologistController : ControllerBase
                 return BadRequest(PsychologistResourceAssembler.ToErrorResponse("Psychologist must be verified to access invitation code"));
             }
 
+            // Auto-generate code if it doesn't exist or is expired
+            if (string.IsNullOrWhiteSpace(psychologist.InvitationCode) || psychologist.IsInvitationCodeExpired())
+            {
+                _logger.LogInformation("Auto-generating invitation code for psychologist: {UserId}", userId);
+
+                var regenerateCommand = new RegenerateInvitationCodeCommand(userId, "Auto-generated on first access", userId);
+                var newCode = await _psychologistCommandService.HandleRegenerateInvitationCodeAsync(regenerateCommand);
+
+                if (string.IsNullOrWhiteSpace(newCode))
+                {
+                    return StatusCode(StatusCodes.Status500InternalServerError,
+                        PsychologistResourceAssembler.ToErrorResponse("Failed to generate invitation code"));
+                }
+
+                // Fetch updated psychologist
+                psychologist = await _psychologistQueryService.HandleGetPsychologistByIdAsync(userId);
+            }
+
             var response = new
             {
                 invitationCode = psychologist.InvitationCode,

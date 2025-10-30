@@ -280,6 +280,24 @@ builder.Services.AddScoped<SoftFocusBackend.Library.Application.ACL.Services.ITr
 // THERAPY BOUNDED CONTEXT
 // ============================================
 
+// Therapy - Domain Services
+builder.Services.AddScoped<SoftFocusBackend.Therapy.Domain.Services.IConnectionValidationService,
+    SoftFocusBackend.Therapy.Domain.Services.ConnectionValidationService>();
+builder.Services.AddScoped<SoftFocusBackend.Therapy.Domain.Services.IChatModerationService,
+    SoftFocusBackend.Therapy.Domain.Services.ChatModerationService>();
+
+// Therapy - Repositories
+builder.Services.AddScoped<SoftFocusBackend.Therapy.Domain.Repositories.ITherapeuticRelationshipRepository,
+    SoftFocusBackend.Therapy.Infrastructure.Persistence.MongoDB.Repositories.MongoTherapeuticRelationshipRepository>();
+builder.Services.AddScoped<SoftFocusBackend.Therapy.Domain.Repositories.IChatMessageRepository,
+    SoftFocusBackend.Therapy.Infrastructure.Persistence.MongoDB.Repositories.MongoChatMessageRepository>();
+
+// Therapy - Application Services
+builder.Services.AddScoped<SoftFocusBackend.Therapy.Application.Internal.CommandServices.EstablishConnectionCommandService>();
+builder.Services.AddScoped<SoftFocusBackend.Therapy.Application.Internal.CommandServices.SendChatMessageCommandService>();
+builder.Services.AddScoped<SoftFocusBackend.Therapy.Application.Internal.QueryServices.ChatHistoryQueryService>();
+builder.Services.AddScoped<SoftFocusBackend.Therapy.Application.Internal.QueryServices.PatientDirectoryQueryService>();
+
 // Add services to the container
 builder.Services.AddSignalR(); // Add SignalR services
 builder.Services.AddControllers();
