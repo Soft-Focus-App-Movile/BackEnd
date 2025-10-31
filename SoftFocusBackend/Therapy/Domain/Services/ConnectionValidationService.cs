@@ -11,6 +11,7 @@ namespace SoftFocusBackend.Therapy.Domain.Services
         private readonly IPsychologistRepository _psychologistRepository;
 
         public ConnectionValidationService(
+            
             ITherapeuticRelationshipRepository relationshipRepository,
             IPsychologistRepository psychologistRepository)
         {

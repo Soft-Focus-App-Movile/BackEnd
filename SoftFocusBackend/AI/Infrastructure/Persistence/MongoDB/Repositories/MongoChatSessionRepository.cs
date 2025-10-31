@@ -1,5 +1,6 @@
 using MongoDB.Driver;
 using SoftFocusBackend.AI.Domain.Model.Aggregates;
+using SoftFocusBackend.AI.Domain.Model.ValueObjects;
 using SoftFocusBackend.AI.Domain.Repositories;
 using SoftFocusBackend.Shared.Infrastructure.Persistence.MongoDB.Context;
 using SoftFocusBackend.Shared.Infrastructure.Persistence.MongoDB.Repositories;
@@ -87,6 +88,25 @@ public class MongoChatSessionRepository : BaseRepository<ChatSession>, IChatSess
             .SortByDescending(m => m.Timestamp)
             .Limit(limit)
             .ToListAsync();
+    }
+
+    public async Task<string?> GetLastUserMessagePreviewAsync(string sessionId, int maxLength = 80)
+    {
+        var lastUserMessage = await _messagesCollection
+            .Find(m => m.SessionId == sessionId && m.Role == ChatRole.User)
+            .SortByDescending(m => m.Timestamp)
+            .Limit(1)
+            .FirstOrDefaultAsync();
+
+        if (lastUserMessage == null || string.IsNullOrWhiteSpace(lastUserMessage.Content))
+        {
+            return null;
+        }
+
+        var preview = lastUserMessage.Content.Trim();
+        return preview.Length <= maxLength
+            ? preview
+            : preview.Substring(0, maxLength).TrimEnd() + "...";
     }
 
     public async Task UpdateAsync(ChatSession session)
