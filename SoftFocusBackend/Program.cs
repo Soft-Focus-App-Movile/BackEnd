@@ -469,17 +469,16 @@ using (var scope = app.Services.CreateScope())
         logger.LogWarning(ex, "Could not create admin user on startup");
     }
 
-    if (app.Environment.IsDevelopment())
+    // Seed database in all environments (development and production)
+    try
     {
-        try
-        {
-            var seeder = scope.ServiceProvider.GetRequiredService<DatabaseSeeder>();
-            await seeder.SeedAsync();
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex, "Could not seed database on startup");
-        }
+        var seeder = scope.ServiceProvider.GetRequiredService<DatabaseSeeder>();
+        await seeder.SeedAsync();
+        logger.LogInformation("Database seeding executed successfully");
+    }
+    catch (Exception ex)
+    {
+        logger.LogWarning(ex, "Could not seed database on startup");
     }
 }
 
