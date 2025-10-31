@@ -36,22 +36,31 @@ public class MongoAIUsageRepository : BaseRepository<AIUsage>, IAIUsageRepositor
 
     public async Task<AIUsage> CreateOrUpdateAsync(AIUsage usage)
     {
-        var existing = await Collection.Find(u => u.UserId == usage.UserId && u.Week == usage.Week).FirstOrDefaultAsync();
+        var filter = Builders<AIUsage>.Filter.And(
+            Builders<AIUsage>.Filter.Eq(u => u.UserId, usage.UserId),
+            Builders<AIUsage>.Filter.Eq(u => u.Week, usage.Week)
+        );
 
-        if (existing != null)
+        var update = Builders<AIUsage>.Update
+            .Set(u => u.ChatMessagesUsed, usage.ChatMessagesUsed)
+            .Set(u => u.ChatMessagesLimit, usage.ChatMessagesLimit)
+            .Set(u => u.FacialAnalysisUsed, usage.FacialAnalysisUsed)
+            .Set(u => u.FacialAnalysisLimit, usage.FacialAnalysisLimit)
+            .Set(u => u.Plan, usage.Plan)
+            .Set(u => u.UpdatedAt, DateTime.UtcNow)
+            .SetOnInsert(u => u.UserId, usage.UserId)
+            .SetOnInsert(u => u.Week, usage.Week)
+            .SetOnInsert(u => u.WeekStartDate, usage.WeekStartDate)
+            .SetOnInsert(u => u.CreatedAt, usage.CreatedAt);
+
+        var options = new FindOneAndUpdateOptions<AIUsage>
         {
-            existing.ChatMessagesUsed = usage.ChatMessagesUsed;
-            existing.ChatMessagesLimit = usage.ChatMessagesLimit;
-            existing.FacialAnalysisUsed = usage.FacialAnalysisUsed;
-            existing.FacialAnalysisLimit = usage.FacialAnalysisLimit;
-            existing.Plan = usage.Plan;
-            existing.UpdatedAt = DateTime.UtcNow;
-            await Collection.ReplaceOneAsync(u => u.Id == existing.Id, existing);
-            return existing;
-        }
+            IsUpsert = true,
+            ReturnDocument = ReturnDocument.After
+        };
 
-        await Collection.InsertOneAsync(usage);
-        return usage;
+        var result = await Collection.FindOneAndUpdateAsync(filter, update, options);
+        return result;
     }
 
     public async Task IncrementUsageAsync(string userId, string featureType)

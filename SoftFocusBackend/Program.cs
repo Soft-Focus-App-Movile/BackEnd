@@ -223,6 +223,7 @@ builder.Services.AddScoped<IAIUsageRepository, MongoAIUsageRepository>();
 builder.Services.AddScoped<AIChatCommandService>();
 builder.Services.AddScoped<AIEmotionCommandService>();
 builder.Services.AddScoped<AIUsageQueryService>();
+builder.Services.AddScoped<AIChatQueryService>();
 
 // AI - ACL Services (Mock implementations)
 builder.Services.AddScoped<SoftFocusBackend.AI.Application.ACL.Services.ITrackingIntegrationService, SoftFocusBackend.AI.Application.ACL.Implementations.TrackingIntegrationService>();
