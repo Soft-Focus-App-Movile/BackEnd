@@ -159,6 +159,10 @@ builder.Configuration["Spotify:ClientSecret"] = Environment.GetEnvironmentVariab
 builder.Configuration["YouTube:ApiKey"] = Environment.GetEnvironmentVariable("YouTube__ApiKey");
 builder.Configuration["OpenWeather:ApiKey"] = Environment.GetEnvironmentVariable("OpenWeather__ApiKey");
 builder.Configuration["Foursquare:ApiKey"] = Environment.GetEnvironmentVariable("Foursquare__ApiKey");
+builder.Configuration["StripeSettings:PublishableKey"] = Environment.GetEnvironmentVariable("StripeSettings__PublishableKey");
+builder.Configuration["StripeSettings:SecretKey"] = Environment.GetEnvironmentVariable("StripeSettings__SecretKey");
+builder.Configuration["StripeSettings:WebhookSecret"] = Environment.GetEnvironmentVariable("StripeSettings__WebhookSecret");
+builder.Configuration["StripeSettings:ProPriceId"] = Environment.GetEnvironmentVariable("StripeSettings__ProPriceId");
 
 // Users - Domain Services
 builder.Services.AddScoped<IUserDomainService, UserDomainService>();
@@ -276,6 +280,30 @@ builder.Services.AddScoped<IRecommendationQueryService, RecommendationQueryServi
 // Library - ACL Services
 builder.Services.AddScoped<SoftFocusBackend.Library.Application.ACL.Services.IUserIntegrationService, SoftFocusBackend.Library.Application.ACL.Implementations.UserIntegrationService>();
 builder.Services.AddScoped<SoftFocusBackend.Library.Application.ACL.Services.ITrackingIntegrationService, SoftFocusBackend.Library.Application.ACL.Implementations.TrackingIntegrationService>();
+
+// ============================================
+// SUBSCRIPTION BOUNDED CONTEXT
+// ============================================
+
+// Subscription - Configuration
+builder.Services.Configure<SoftFocusBackend.Subscription.Infrastructure.ExternalServices.StripeSettings>(
+    builder.Configuration.GetSection("StripeSettings"));
+
+// Subscription - Repositories
+builder.Services.AddScoped<SoftFocusBackend.Subscription.Infrastructure.Repositories.ISubscriptionRepository,
+    SoftFocusBackend.Subscription.Infrastructure.Repositories.SubscriptionRepository>();
+builder.Services.AddScoped<SoftFocusBackend.Subscription.Infrastructure.Repositories.IUsageTrackingRepository,
+    SoftFocusBackend.Subscription.Infrastructure.Repositories.UsageTrackingRepository>();
+
+// Subscription - External Services
+builder.Services.AddScoped<SoftFocusBackend.Subscription.Infrastructure.ExternalServices.IStripePaymentService,
+    SoftFocusBackend.Subscription.Infrastructure.ExternalServices.StripePaymentService>();
+
+// Subscription - Application Services
+builder.Services.AddScoped<SoftFocusBackend.Subscription.Application.Services.ISubscriptionCommandService,
+    SoftFocusBackend.Subscription.Application.Services.SubscriptionCommandService>();
+builder.Services.AddScoped<SoftFocusBackend.Subscription.Application.Services.ISubscriptionQueryService,
+    SoftFocusBackend.Subscription.Application.Services.SubscriptionQueryService>();
 
 // ============================================
 // THERAPY BOUNDED CONTEXT
