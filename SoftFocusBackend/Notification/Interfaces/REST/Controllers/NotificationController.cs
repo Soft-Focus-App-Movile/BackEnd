@@ -14,7 +14,7 @@ namespace SoftFocusBackend.Notification.Interfaces.REST.Controllers;
 
 [Authorize]
 [ApiController]
-[Route("api/notifications")]
+[Route("api/v1/notifications")]
 public class NotificationController : ControllerBase
 {
     private readonly SendNotificationCommandService _sendCommandService;

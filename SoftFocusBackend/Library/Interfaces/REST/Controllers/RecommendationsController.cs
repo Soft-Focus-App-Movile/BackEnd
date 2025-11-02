@@ -9,7 +9,7 @@ using SoftFocusBackend.Library.Interfaces.REST.Resources;
 namespace SoftFocusBackend.Library.Interfaces.REST.Controllers;
 
 [ApiController]
-[Route("api/library/recommendations")]
+[Route("api/v1/library/recommendations")]
 [Authorize]
 public class RecommendationsController : ControllerBase
 {

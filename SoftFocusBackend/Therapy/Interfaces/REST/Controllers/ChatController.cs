@@ -12,7 +12,7 @@ using SoftFocusBackend.Therapy.Interfaces.REST.Resources;
 namespace SoftFocusBackend.Therapy.Interfaces.REST.Controllers
 {
     [ApiController]
-    [Route("api/chat")]
+    [Route("api/v1/chat")]
     [Authorize]
     public class ChatController : ControllerBase
     {
