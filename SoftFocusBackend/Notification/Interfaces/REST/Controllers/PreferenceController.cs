@@ -12,7 +12,7 @@ namespace SoftFocusBackend.Notification.Interfaces.REST.Controllers;
 
 [Authorize]
 [ApiController]
-[Route("api/preferences")]
+[Route("api/v1/preferences")]
 public class PreferenceController : ControllerBase
 {
     private readonly UpdatePreferencesCommandService _updateCommandService;

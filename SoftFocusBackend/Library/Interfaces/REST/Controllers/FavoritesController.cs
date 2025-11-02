@@ -13,7 +13,7 @@ using SoftFocusBackend.Users.Domain.Model.ValueObjects;
 namespace SoftFocusBackend.Library.Interfaces.REST.Controllers;
 
 [ApiController]
-[Route("api/library/favorites")]
+[Route("api/v1/library/favorites")]
 [Authorize]
 public class FavoritesController : ControllerBase
 {

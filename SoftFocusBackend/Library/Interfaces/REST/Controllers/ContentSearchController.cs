@@ -10,7 +10,7 @@ using SoftFocusBackend.Library.Interfaces.REST.Resources;
 namespace SoftFocusBackend.Library.Interfaces.REST.Controllers;
 
 [ApiController]
-[Route("api/library")]
+[Route("api/v1/library")]
 [Authorize]
 public class ContentSearchController : ControllerBase
 {

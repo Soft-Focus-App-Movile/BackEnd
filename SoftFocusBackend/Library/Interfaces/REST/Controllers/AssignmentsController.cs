@@ -13,7 +13,7 @@ using SoftFocusBackend.Users.Domain.Model.ValueObjects;
 namespace SoftFocusBackend.Library.Interfaces.REST.Controllers;
 
 [ApiController]
-[Route("api/library/assignments")]
+[Route("api/v1/library/assignments")]
 [Authorize]
 public class AssignmentsController : ControllerBase
 {
