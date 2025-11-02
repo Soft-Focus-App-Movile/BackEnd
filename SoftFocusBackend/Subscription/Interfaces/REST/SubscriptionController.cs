@@ -44,7 +44,21 @@ public class SubscriptionController : ControllerBase
 
             if (subscription == null)
             {
-                return NotFound(new { message = "Subscription not found" });
+                // Auto-create subscription for existing users without one
+                _logger.LogWarning("Subscription not found for user: {UserId}. Creating one automatically.", userId);
+
+                var userTypeStr = User.FindFirstValue("user_type") ?? "General";
+                var userType = Enum.Parse<SoftFocusBackend.Users.Domain.Model.ValueObjects.UserType>(userTypeStr);
+
+                var command = new CreateBasicSubscriptionCommand
+                {
+                    UserId = userId,
+                    UserType = userType
+                };
+
+                subscription = await _commandService.CreateBasicSubscriptionAsync(command);
+
+                _logger.LogInformation("Auto-created Basic subscription for user: {UserId}", userId);
             }
 
             return Ok(subscription);
@@ -66,6 +80,29 @@ public class SubscriptionController : ControllerBase
         {
             var userId = User.FindFirstValue("user_id")
                 ?? throw new UnauthorizedAccessException("User ID not found in token");
+
+            // Check if subscription exists first
+            var subscription = await _queryService.GetSubscriptionByUserIdAsync(
+                new GetSubscriptionByUserIdQuery { UserId = userId });
+
+            if (subscription == null)
+            {
+                // Auto-create subscription for existing users without one
+                _logger.LogWarning("Subscription not found for user: {UserId}. Creating one automatically.", userId);
+
+                var userTypeStr = User.FindFirstValue("user_type") ?? "General";
+                var userType = Enum.Parse<SoftFocusBackend.Users.Domain.Model.ValueObjects.UserType>(userTypeStr);
+
+                var command = new CreateBasicSubscriptionCommand
+                {
+                    UserId = userId,
+                    UserType = userType
+                };
+
+                await _commandService.CreateBasicSubscriptionAsync(command);
+
+                _logger.LogInformation("Auto-created Basic subscription for user: {UserId}", userId);
+            }
 
             var stats = await _queryService.GetUsageStatsAsync(
                 new GetUsageStatsQuery { UserId = userId });
@@ -195,6 +232,43 @@ public class SubscriptionController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error tracking usage");
+            return StatusCode(500, new { message = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Initialize subscription for current user (Helper endpoint for existing users without subscription)
+    /// </summary>
+    [HttpPost("initialize")]
+    public async Task<IActionResult> InitializeSubscription()
+    {
+        try
+        {
+            var userId = User.FindFirstValue("user_id")
+                ?? throw new UnauthorizedAccessException("User ID not found in token");
+
+            var userTypeStr = User.FindFirstValue("user_type") ?? "General";
+            var userType = Enum.Parse<SoftFocusBackend.Users.Domain.Model.ValueObjects.UserType>(userTypeStr);
+
+            var command = new CreateBasicSubscriptionCommand
+            {
+                UserId = userId,
+                UserType = userType
+            };
+
+            var subscription = await _commandService.CreateBasicSubscriptionAsync(command);
+
+            _logger.LogInformation("Initialized subscription for user: {UserId}", userId);
+
+            return Ok(new
+            {
+                message = "Subscription initialized successfully",
+                subscription
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error initializing subscription");
             return StatusCode(500, new { message = "Internal server error" });
         }
     }
