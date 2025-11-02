@@ -299,19 +299,51 @@ public class TMDBMovieService : ITMDBService
     {
         try
         {
+            // Validar que tenga los datos esenciales
+            if (string.IsNullOrWhiteSpace(movie.Title))
+            {
+                _logger.LogWarning("TMDB: Skipping movie {MovieId} - missing title", movie.Id);
+                return null;
+            }
+
+            if (string.IsNullOrWhiteSpace(movie.PosterPath))
+            {
+                _logger.LogWarning("TMDB: Skipping movie {MovieId} ({Title}) - missing poster", movie.Id, movie.Title);
+                return null;
+            }
+
+            if (string.IsNullOrWhiteSpace(movie.Overview))
+            {
+                _logger.LogWarning("TMDB: Skipping movie {MovieId} ({Title}) - missing overview", movie.Id, movie.Title);
+                return null;
+            }
+
+            if (movie.VoteAverage <= 0)
+            {
+                _logger.LogWarning("TMDB: Skipping movie {MovieId} ({Title}) - missing rating", movie.Id, movie.Title);
+                return null;
+            }
+
             _logger.LogInformation("TMDB: Creating ExternalContentId for movie {MovieId}", movie.Id);
             var externalId = ExternalContentId.CreateTmdbId(movie.Id.ToString(), ContentType.Movie);
 
             _logger.LogInformation("TMDB: Getting trailer for movie {MovieId}", movie.Id);
             var trailerUrl = await GetTrailerUrlAsync(movie.Id, "movie");
 
+            // Validar que tenga trailer
+            if (string.IsNullOrWhiteSpace(trailerUrl))
+            {
+                _logger.LogWarning("TMDB: Skipping movie {MovieId} ({Title}) - missing trailer", movie.Id, movie.Title);
+                return null;
+            }
+
             _logger.LogInformation("TMDB: Creating metadata for movie {MovieId} - Title: {Title}, PosterPath: {Poster}",
                 movie.Id, movie.Title, movie.PosterPath);
 
             var metadata = ContentMetadata.CreateForMovie(
-                title: movie.Title ?? string.Empty,
-                overview: movie.Overview ?? string.Empty,
-                posterUrl: _settings.GetPosterUrl(movie.PosterPath ?? string.Empty),
+                title: movie.Title,
+                overview: movie.Overview,
+                posterUrl: _settings.GetPosterUrl(movie.PosterPath),
                 backdropUrl: _settings.GetBackdropUrl(movie.BackdropPath ?? string.Empty),
                 rating: movie.VoteAverage,
                 duration: movie.Runtime > 0 ? $"{movie.Runtime}min" : string.Empty,
@@ -349,13 +381,46 @@ public class TMDBMovieService : ITMDBService
     {
         try
         {
+            // Validar que tenga los datos esenciales
+            var title = series.Name ?? series.Title;
+            if (string.IsNullOrWhiteSpace(title))
+            {
+                _logger.LogWarning("TMDB: Skipping series {SeriesId} - missing title", series.Id);
+                return null;
+            }
+
+            if (string.IsNullOrWhiteSpace(series.PosterPath))
+            {
+                _logger.LogWarning("TMDB: Skipping series {SeriesId} ({Title}) - missing poster", series.Id, title);
+                return null;
+            }
+
+            if (string.IsNullOrWhiteSpace(series.Overview))
+            {
+                _logger.LogWarning("TMDB: Skipping series {SeriesId} ({Title}) - missing overview", series.Id, title);
+                return null;
+            }
+
+            if (series.VoteAverage <= 0)
+            {
+                _logger.LogWarning("TMDB: Skipping series {SeriesId} ({Title}) - missing rating", series.Id, title);
+                return null;
+            }
+
             var externalId = ExternalContentId.CreateTmdbId(series.Id.ToString(), ContentType.Series);
             var trailerUrl = await GetTrailerUrlAsync(series.Id, "tv");
 
+            // Validar que tenga trailer
+            if (string.IsNullOrWhiteSpace(trailerUrl))
+            {
+                _logger.LogWarning("TMDB: Skipping series {SeriesId} ({Title}) - missing trailer", series.Id, title);
+                return null;
+            }
+
             var metadata = ContentMetadata.CreateForMovie(
-                title: series.Name ?? series.Title ?? string.Empty,
-                overview: series.Overview ?? string.Empty,
-                posterUrl: _settings.GetPosterUrl(series.PosterPath ?? string.Empty),
+                title: title,
+                overview: series.Overview,
+                posterUrl: _settings.GetPosterUrl(series.PosterPath),
                 backdropUrl: _settings.GetBackdropUrl(series.BackdropPath ?? string.Empty),
                 rating: series.VoteAverage,
                 duration: series.NumberOfSeasons > 0 ? $"{series.NumberOfSeasons} temporadas" : string.Empty,

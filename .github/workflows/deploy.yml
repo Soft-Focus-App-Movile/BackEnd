@@ -78,6 +78,11 @@ jobs:
             # Foursquare
             Foursquare__ApiKey=${{ secrets.FOURSQUARE_API_KEY }}
             
+            # Stripe Payment Gateway
+            StripeSettings__PublishableKey=${{ secrets.STRIPE_PUBLISHABLEKEY }}
+            StripeSettings__SecretKey=${{ secrets.STRIPE_SECRETKEY }}
+            StripeSettings__WebhookSecret=${{ secrets.STRIPE_WEBHOOKSECRET }}
+            StripeSettings__ProPriceId=${{ secrets.STRIPE_PROPRICEID }}
 
             # Production Environment
             ASPNETCORE_ENVIRONMENT=Production

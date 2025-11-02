@@ -1,15 +1,21 @@
 using SoftFocusBackend.Auth.Domain.Model.ValueObjects;
 using SoftFocusBackend.Users.Application.ACL.Services;
+using SoftFocusBackend.Subscription.Application.Services;
+using SoftFocusBackend.Subscription.Application.Commands;
 
 namespace SoftFocusBackend.Users.Infrastructure.ACL;
 
 public class AuthNotificationService : IAuthNotificationService
 {
     private readonly ILogger<AuthNotificationService> _logger;
+    private readonly ISubscriptionCommandService _subscriptionCommandService;
 
-    public AuthNotificationService(ILogger<AuthNotificationService> logger)
+    public AuthNotificationService(
+        ILogger<AuthNotificationService> logger,
+        ISubscriptionCommandService subscriptionCommandService)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _subscriptionCommandService = subscriptionCommandService ?? throw new ArgumentNullException(nameof(subscriptionCommandService));
     }
 
     public async Task<AuthenticatedUser?> CreateAuthenticatedUserAsync(string userId, string email, string fullName, 
@@ -42,14 +48,25 @@ public class AuthNotificationService : IAuthNotificationService
     {
         try
         {
-            _logger.LogInformation("Notifying Auth context of user creation: {UserId} - {Email} - {UserType}", 
+            _logger.LogInformation("Notifying Auth context of user creation: {UserId} - {Email} - {UserType}",
                 userId, email, userType);
 
-            await Task.CompletedTask;
+            // Create Basic subscription for the new user
+            var userTypeEnum = Enum.Parse<SoftFocusBackend.Users.Domain.Model.ValueObjects.UserType>(userType);
+
+            var command = new CreateBasicSubscriptionCommand
+            {
+                UserId = userId,
+                UserType = userTypeEnum
+            };
+
+            await _subscriptionCommandService.CreateBasicSubscriptionAsync(command);
+
+            _logger.LogInformation("Created Basic subscription for new user: {UserId}", userId);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error notifying user creation: {UserId}", userId);
+            _logger.LogError(ex, "Error notifying user creation or creating subscription: {UserId}", userId);
         }
     }
 
