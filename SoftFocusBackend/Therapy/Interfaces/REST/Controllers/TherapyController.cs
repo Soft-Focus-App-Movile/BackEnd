@@ -10,7 +10,7 @@ using SoftFocusBackend.Therapy.Interfaces.REST.Resources;
 namespace SoftFocusBackend.Therapy.Interfaces.REST.Controllers
 {
     [ApiController]
-    [Route("api/therapy")]
+    [Route("api/v1/therapy")]
     [Authorize]
     public class TherapyController : ControllerBase
     {
