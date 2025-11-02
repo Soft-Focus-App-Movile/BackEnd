@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Stripe;
@@ -7,10 +8,11 @@ using SoftFocusBackend.Subscription.Infrastructure.Repositories;
 namespace SoftFocusBackend.Subscription.Interfaces.Webhooks;
 
 /// <summary>
-/// SIMPLIFIED VERSION - Configure proper webhooks after testing Stripe integration
+/// Handles Stripe webhook events with signature validation
 /// </summary>
 [ApiController]
 [Route("api/v1/webhooks/stripe")]
+[AllowAnonymous]
 public class StripeWebhookController : ControllerBase
 {
     private readonly ISubscriptionRepository _subscriptionRepository;
@@ -34,13 +36,40 @@ public class StripeWebhookController : ControllerBase
 
         try
         {
-            // Validate webhook signature (commented out for testing)
-            // var stripeEvent = EventUtility.ConstructEvent(json, Request.Headers["Stripe-Signature"], _stripeSettings.WebhookSecret);
+            // Validate webhook signature
+            var stripeSignature = Request.Headers["Stripe-Signature"];
 
-            _logger.LogInformation("Received Stripe webhook. Body length: {Length}", json.Length);
+            if (string.IsNullOrEmpty(stripeSignature))
+            {
+                _logger.LogWarning("Stripe webhook received without signature header");
+                return BadRequest("Missing Stripe signature");
+            }
 
-            // TODO: Implement webhook handlers after Stripe is fully configured
-            // For now, just log and return OK
+            Event stripeEvent;
+            try
+            {
+                stripeEvent = EventUtility.ConstructEvent(
+                    json,
+                    stripeSignature,
+                    _stripeSettings.WebhookSecret
+                );
+            }
+            catch (StripeException ex)
+            {
+                _logger.LogWarning(ex, "Invalid Stripe webhook signature");
+                return BadRequest("Invalid signature");
+            }
+
+            _logger.LogInformation("Received valid Stripe webhook: {EventType}, ID: {EventId}",
+                stripeEvent.Type, stripeEvent.Id);
+
+            // TODO: Implement webhook handlers for different event types
+            // Common events to handle:
+            // - checkout.session.completed: Payment successful
+            // - customer.subscription.updated: Subscription changed
+            // - customer.subscription.deleted: Subscription cancelled
+            // - invoice.payment_succeeded: Recurring payment successful
+            // - invoice.payment_failed: Payment failed
 
             return Ok();
         }
