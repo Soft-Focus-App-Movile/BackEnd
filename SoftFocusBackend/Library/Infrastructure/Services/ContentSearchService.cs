@@ -187,18 +187,15 @@ public class ContentSearchService : IContentSearchService
         {
             foreach (var item in items)
             {
-                // Verificar si ya existe en la base de datos
                 var existingItem = await _contentRepository.FindByExternalIdAsync(item.ExternalId);
 
                 if (existingItem == null)
                 {
-                    // No existe, agregarlo
                     await _contentRepository.AddAsync(item);
                     _logger.LogInformation("Content item saved to database: {ExternalId}", item.ExternalId);
                 }
                 else
                 {
-                    // Ya existe, actualizar la fecha de último acceso
                     existingItem.RefreshCache();
                     _contentRepository.Update(existingItem);
                     _logger.LogDebug("Content item already exists, updated cache: {ExternalId}", item.ExternalId);
@@ -211,7 +208,6 @@ public class ContentSearchService : IContentSearchService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error saving content items to database");
-            // No lanzamos excepción para no afectar la búsqueda
         }
     }
 }

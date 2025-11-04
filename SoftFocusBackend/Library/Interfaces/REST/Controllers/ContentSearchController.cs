@@ -25,9 +25,35 @@ public class ContentSearchController : ControllerBase
         _logger = logger;
     }
 
-    /// <summary>
-    /// Busca contenido multimedia en APIs externas
-    /// </summary>
+    [HttpGet("{contentId}")]
+    [ProducesResponseType(typeof(ContentItemResponse), 200)]
+    [ProducesResponseType(404)]
+    [ProducesResponseType(401)]
+    public async Task<IActionResult> GetContentById(string contentId)
+    {
+        var userId = GetCurrentUserId();
+        if (userId == null)
+            return Unauthorized();
+
+        var query = new GetContentByIdQuery(contentId);
+
+        try
+        {
+            var content = await _searchQuery.GetContentByIdAsync(query);
+
+            if (content == null)
+                return NotFound(new { message = $"Content with ID {contentId} not found" });
+
+            var response = MapToResponse(content);
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching content by ID: {ContentId}", contentId);
+            return StatusCode(500, new { message = "Error retrieving content" });
+        }
+    }
+
     [HttpPost("search")]
     [ProducesResponseType(typeof(List<ContentItemResponse>), 200)]
     [ProducesResponseType(400)]

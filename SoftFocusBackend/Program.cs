@@ -259,6 +259,7 @@ builder.Services.AddScoped<IContentSearchService, ContentSearchService>();
 builder.Services.AddScoped<IEmotionContentMatcher, EmotionContentMatcherService>();
 builder.Services.AddScoped<IWeatherPlaceRecommender, WeatherPlaceRecommenderService>();
 builder.Services.AddScoped<IContentCacheService, ContentCacheService>();
+builder.Services.AddScoped<ICachePopulationService, CachePopulationService>();
 
 // Library - Repositories
 builder.Services.AddScoped<IContentItemRepository, MongoContentItemRepository>();
