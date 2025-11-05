@@ -76,22 +76,26 @@ public class User : BaseEntity
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public void UpdateProfile(string fullName, string? firstName = null, string? lastName = null, 
-        DateTime? dateOfBirth = null, string? gender = null, string? phone = null, 
+    public void UpdateProfile(string fullName, string? firstName = null, string? lastName = null,
+        DateTime? dateOfBirth = null, string? gender = null, string? phone = null,
         string? bio = null, string? country = null, string? city = null,
         List<string>? interests = null, List<string>? mentalHealthGoals = null)
     {
+        // Always update FullName (calculated from FirstName + LastName)
         FullName = fullName;
-        FirstName = firstName;
-        LastName = lastName;
-        DateOfBirth = dateOfBirth;
-        Gender = gender;
-        Phone = phone;
-        Bio = bio;
-        Country = country;
-        City = city;
-        Interests = interests;
-        MentalHealthGoals = mentalHealthGoals;
+
+        // Only update fields that are explicitly provided (not null)
+        if (firstName != null) FirstName = firstName;
+        if (lastName != null) LastName = lastName;
+        if (dateOfBirth.HasValue) DateOfBirth = dateOfBirth;
+        if (gender != null) Gender = gender;
+        if (phone != null) Phone = phone;
+        if (bio != null) Bio = bio;
+        if (country != null) Country = country;
+        if (city != null) City = city;
+        if (interests != null) Interests = interests;
+        if (mentalHealthGoals != null) MentalHealthGoals = mentalHealthGoals;
+
         UpdatedAt = DateTime.UtcNow;
     }
 

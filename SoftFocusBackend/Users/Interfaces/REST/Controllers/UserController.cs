@@ -92,10 +92,20 @@ public class UserController : ControllerBase
             }
 
             _logger.LogInformation("Update profile request for user: {UserId}", userId);
-            
+
+            // Get current user to preserve existing data
+            var query = new GetUserByIdQuery(userId, true, userId);
+            var currentUser = await _userQueryService.HandleGetUserByIdAsync(query);
+
+            if (currentUser == null)
+            {
+                _logger.LogWarning("User not found for profile update: {UserId}", userId);
+                return NotFound(UserResourceAssembler.ToErrorResponse("User not found"));
+            }
+
             byte[]? imageBytes = null;
             string? imageFileName = null;
-            
+
             if (resource.ProfileImage != null && resource.ProfileImage.Length > 0)
             {
                 using var memoryStream = new MemoryStream();
@@ -104,7 +114,7 @@ public class UserController : ControllerBase
                 imageFileName = resource.ProfileImage.FileName;
             }
 
-            var command = UserResourceAssembler.ToUpdateCommandWithImage(resource, userId, imageBytes, imageFileName);  // CAMBIAR ESTE MÉTODO
+            var command = UserResourceAssembler.ToUpdateCommandWithImage(resource, userId, currentUser.FullName, imageBytes, imageFileName);
             var updatedUser = await _userCommandService.HandleUpdateUserProfileAsync(command);
 
             if (updatedUser == null)
