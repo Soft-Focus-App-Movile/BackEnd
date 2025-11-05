@@ -681,6 +681,28 @@ public class FileUploadOperationFilter : Swashbuckle.AspNetCore.SwaggerGen.IOper
                     Description = param.ModelMetadata?.Description
                 };
             }
+            else if (paramType == typeof(DateTime) || paramType == typeof(DateTime?))
+            {
+                properties[paramName] = new Microsoft.OpenApi.Models.OpenApiSchema
+                {
+                    Type = "string",
+                    Format = "date-time",
+                    Nullable = paramType == typeof(DateTime?),
+                    Description = param.ModelMetadata?.Description
+                };
+            }
+            else if (paramType == typeof(List<string>))
+            {
+                properties[paramName] = new Microsoft.OpenApi.Models.OpenApiSchema
+                {
+                    Type = "array",
+                    Items = new Microsoft.OpenApi.Models.OpenApiSchema
+                    {
+                        Type = "string"
+                    },
+                    Description = param.ModelMetadata?.Description
+                };
+            }
         }
 
         operation.RequestBody = new Microsoft.OpenApi.Models.OpenApiRequestBody
