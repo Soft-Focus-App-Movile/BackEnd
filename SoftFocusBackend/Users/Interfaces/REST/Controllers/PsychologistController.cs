@@ -286,6 +286,72 @@ public class PsychologistController : ControllerBase
         }
     }
 
+    [HttpGet("complete")]
+    [ProducesResponseType(typeof(PsychologistCompleteProfileResource), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GetCompleteProfile()
+    {
+        try
+        {
+            var userId = GetCurrentUserId();
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                return Unauthorized(PsychologistResourceAssembler.ToErrorResponse("Invalid user session"));
+            }
+
+            _logger.LogInformation("Get complete profile for psychologist: {UserId}", userId);
+
+            var psychologist = await _psychologistQueryService.HandleGetPsychologistByIdAsync(userId);
+            if (psychologist == null)
+            {
+                return NotFound(PsychologistResourceAssembler.ToErrorResponse("Psychologist profile not found"));
+            }
+
+            var response = PsychologistResourceAssembler.ToCompleteProfileResource(psychologist);
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting complete profile");
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                PsychologistResourceAssembler.ToErrorResponse("An error occurred while retrieving complete profile"));
+        }
+    }
+
+    [HttpGet("professional")]
+    [ProducesResponseType(typeof(PsychologistProfessionalResource), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GetProfessionalProfile()
+    {
+        try
+        {
+            var userId = GetCurrentUserId();
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                return Unauthorized(PsychologistResourceAssembler.ToErrorResponse("Invalid user session"));
+            }
+
+            _logger.LogInformation("Get professional profile for psychologist: {UserId}", userId);
+
+            var psychologist = await _psychologistQueryService.HandleGetPsychologistByIdAsync(userId);
+            if (psychologist == null)
+            {
+                return NotFound(PsychologistResourceAssembler.ToErrorResponse("Psychologist profile not found"));
+            }
+
+            var response = PsychologistResourceAssembler.ToProfessionalResource(psychologist);
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting professional profile");
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                PsychologistResourceAssembler.ToErrorResponse("An error occurred while retrieving professional profile"));
+        }
+    }
+
     [HttpPut("professional")]
     [ProducesResponseType(typeof(PsychologistProfessionalResource), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
