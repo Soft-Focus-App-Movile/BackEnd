@@ -125,6 +125,63 @@ public class SpotifyMusicService : ISpotifyService
         }
     }
 
+    public async Task<List<ContentItem>> GetPopularTracksAsync(int limit = 20)
+    {
+        try
+        {
+            await EnsureValidTokenAsync();
+
+            var queries = new[] { "top hits 2024", "trending music", "viral songs", "popular latin" };
+            var allTracks = new List<ContentItem>();
+
+            foreach (var query in queries)
+            {
+                if (allTracks.Count >= limit) break;
+
+                var url = $"{_settings.BaseUrl}/search?q={Uri.EscapeDataString(query)}&type=track&market=PE&limit={Math.Min(10, limit - allTracks.Count)}";
+
+                var request = new HttpRequestMessage(HttpMethod.Get, url);
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);
+
+                var response = await _httpClient.SendAsync(request);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogWarning("Spotify API error for query '{Query}': {StatusCode}", query, response.StatusCode);
+                    continue;
+                }
+
+                var content = await response.Content.ReadAsStringAsync();
+                var result = JsonSerializer.Deserialize<SpotifySearchResponse>(content, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+
+                if (result?.Tracks?.Items != null)
+                {
+                    foreach (var track in result.Tracks.Items)
+                    {
+                        if (allTracks.Count >= limit) break;
+
+                        var contentItem = ConvertTrackToContentItem(track);
+                        if (contentItem != null && !allTracks.Any(t => t.ExternalId == contentItem.ExternalId))
+                        {
+                            allTracks.Add(contentItem);
+                        }
+                    }
+                }
+            }
+
+            _logger.LogInformation("Spotify: Returning {Count} popular tracks", allTracks.Count);
+            return allTracks;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting popular tracks from Spotify");
+            return new List<ContentItem>();
+        }
+    }
+
     public async Task<string?> GetAccessTokenAsync()
     {
         try

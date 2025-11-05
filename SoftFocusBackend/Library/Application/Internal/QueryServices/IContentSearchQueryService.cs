@@ -6,4 +6,5 @@ namespace SoftFocusBackend.Library.Application.Internal.QueryServices;
 public interface IContentSearchQueryService
 {
     Task<List<ContentItem>> SearchContentAsync(SearchContentQuery query);
+    Task<ContentItem?> GetContentByIdAsync(GetContentByIdQuery query);
 }

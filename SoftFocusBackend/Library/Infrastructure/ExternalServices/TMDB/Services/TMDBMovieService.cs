@@ -295,6 +295,131 @@ public class TMDBMovieService : ITMDBService
         }
     }
 
+    public async Task<List<ContentItem>> GetPopularMoviesAsync(int limit = 20)
+    {
+        try
+        {
+            var url = $"{_settings.BaseUrl}/movie/popular?api_key={_settings.ApiKey}&language={_settings.Language}&page=1";
+
+            _logger.LogInformation("TMDB: Getting popular movies");
+
+            var response = await _httpClient.GetAsync(url);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("TMDB API error: {StatusCode}", response.StatusCode);
+                return new List<ContentItem>();
+            }
+
+            var content = await response.Content.ReadAsStringAsync();
+            var result = JsonSerializer.Deserialize<TMDBSearchResponse>(content, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+
+            if (result?.Results == null)
+            {
+                _logger.LogWarning("TMDB: Deserialization returned null results");
+                return new List<ContentItem>();
+            }
+
+            _logger.LogInformation("TMDB: Received {Count} popular movies", result.Results.Count);
+
+            var movies = new List<ContentItem>();
+            var count = 0;
+
+            foreach (var movie in result.Results)
+            {
+                if (count >= limit) break;
+
+                try
+                {
+                    var contentItem = await ConvertMovieToContentItemAsync(movie);
+                    if (contentItem != null)
+                    {
+                        movies.Add(contentItem);
+                        count++;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "TMDB: Failed to convert movie {MovieId}: {Title}", movie.Id, movie.Title);
+                }
+            }
+
+            _logger.LogInformation("TMDB: Returning {Count} popular movies", movies.Count);
+            return movies;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting popular movies from TMDB");
+            return new List<ContentItem>();
+        }
+    }
+
+    public async Task<List<ContentItem>> GetMoviesByGenresAsync(List<int> genreIds, int limit = 20)
+    {
+        try
+        {
+            var genreParam = string.Join(",", genreIds);
+            var url = $"{_settings.BaseUrl}/discover/movie?api_key={_settings.ApiKey}&language={_settings.Language}&with_genres={genreParam}&sort_by=popularity.desc&page=1";
+
+            _logger.LogInformation("TMDB: Discovering movies with genres: {Genres}", genreParam);
+
+            var response = await _httpClient.GetAsync(url);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("TMDB API error: {StatusCode}", response.StatusCode);
+                return new List<ContentItem>();
+            }
+
+            var content = await response.Content.ReadAsStringAsync();
+            var result = JsonSerializer.Deserialize<TMDBSearchResponse>(content, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+
+            if (result?.Results == null)
+            {
+                _logger.LogWarning("TMDB: Deserialization returned null results");
+                return new List<ContentItem>();
+            }
+
+            _logger.LogInformation("TMDB: Received {Count} movies for genres {Genres}", result.Results.Count, genreParam);
+
+            var movies = new List<ContentItem>();
+            var count = 0;
+
+            foreach (var movie in result.Results)
+            {
+                if (count >= limit) break;
+
+                try
+                {
+                    var contentItem = await ConvertMovieToContentItemAsync(movie);
+                    if (contentItem != null)
+                    {
+                        movies.Add(contentItem);
+                        count++;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "TMDB: Failed to convert movie {MovieId}: {Title}", movie.Id, movie.Title);
+                }
+            }
+
+            _logger.LogInformation("TMDB: Returning {Count} movies for genres {Genres}", movies.Count, genreParam);
+            return movies;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error discovering movies by genres from TMDB");
+            return new List<ContentItem>();
+        }
+    }
+
     private async Task<ContentItem?> ConvertMovieToContentItemAsync(TMDBMovie movie)
     {
         try
@@ -330,11 +455,9 @@ public class TMDBMovieService : ITMDBService
             _logger.LogInformation("TMDB: Getting trailer for movie {MovieId}", movie.Id);
             var trailerUrl = await GetTrailerUrlAsync(movie.Id, "movie");
 
-            // Validar que tenga trailer
             if (string.IsNullOrWhiteSpace(trailerUrl))
             {
-                _logger.LogWarning("TMDB: Skipping movie {MovieId} ({Title}) - missing trailer", movie.Id, movie.Title);
-                return null;
+                _logger.LogDebug("TMDB: Movie {MovieId} ({Title}) has no trailer, continuing anyway", movie.Id, movie.Title);
             }
 
             _logger.LogInformation("TMDB: Creating metadata for movie {MovieId} - Title: {Title}, PosterPath: {Poster}",
@@ -410,11 +533,9 @@ public class TMDBMovieService : ITMDBService
             var externalId = ExternalContentId.CreateTmdbId(series.Id.ToString(), ContentType.Series);
             var trailerUrl = await GetTrailerUrlAsync(series.Id, "tv");
 
-            // Validar que tenga trailer
             if (string.IsNullOrWhiteSpace(trailerUrl))
             {
-                _logger.LogWarning("TMDB: Skipping series {SeriesId} ({Title}) - missing trailer", series.Id, title);
-                return null;
+                _logger.LogDebug("TMDB: Series {SeriesId} ({Title}) has no trailer, continuing anyway", series.Id, title);
             }
 
             var metadata = ContentMetadata.CreateForMovie(
