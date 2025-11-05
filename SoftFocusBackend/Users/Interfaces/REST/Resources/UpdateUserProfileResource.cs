@@ -4,11 +4,7 @@ namespace SoftFocusBackend.Users.Interfaces.REST.Resources;
 
 public record UpdateUserProfileResource
 {
-    [Required(ErrorMessage = "Full name is required")]
-    [StringLength(100, MinimumLength = 2, ErrorMessage = "Full name must be between 2 and 100 characters")]
-    public string FullName { get; init; } = string.Empty;
-
-    [StringLength(50, ErrorMessage = "First name cannot exceed 50 characters")]
+    [StringLength(50, MinimumLength = 2, ErrorMessage = "First name must be between 2 and 50 characters")]
     public string? FirstName { get; init; }
 
     [StringLength(50, ErrorMessage = "Last name cannot exceed 50 characters")]
@@ -41,11 +37,6 @@ public record UpdateUserProfileResource
     public bool? PushNotifications { get; init; }
 
     public bool? IsProfilePublic { get; init; }
-
-
-    [Url(ErrorMessage = "Invalid profile image URL")]
-    public string? ProfileImageUrl { get; init; }
-
 
     public IFormFile? ProfileImage { get; init; }
 }
