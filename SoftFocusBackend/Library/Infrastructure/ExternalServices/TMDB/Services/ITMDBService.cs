@@ -34,4 +34,11 @@ public interface ITMDBService
     /// Obtiene detalles de una serie específica
     /// </summary>
     Task<ContentItem?> GetSeriesDetailsAsync(int seriesId);
+
+    /// <summary>
+    /// Obtiene películas populares/trending de TMDB
+    /// </summary>
+    Task<List<ContentItem>> GetPopularMoviesAsync(int limit = 20);
+
+    Task<List<ContentItem>> GetMoviesByGenresAsync(List<int> genreIds, int limit = 20);
 }

@@ -1,3 +1,4 @@
+using MongoDB.Bson;
 using MongoDB.Driver;
 using SoftFocusBackend.Library.Domain.Model.Aggregates;
 using SoftFocusBackend.Library.Domain.Model.ValueObjects;
@@ -31,20 +32,41 @@ public class MongoContentItemRepository : BaseRepository<ContentItem>, IContentI
         EmotionalTag emotion,
         int limit = 20)
     {
-        return await Collection
-            .Find(x => x.ContentType == contentType && x.EmotionalTags.Contains(emotion))
-            .Limit(limit)
-            .ToListAsync();
+        var matchDocument = new BsonDocument
+        {
+            { "ContentType", contentType.ToString() },
+            { "EmotionalTags", emotion.ToString() }
+        };
+
+        var sampleDocument = new BsonDocument("size", limit);
+
+        var pipeline = new[]
+        {
+            new BsonDocument("$match", matchDocument),
+            new BsonDocument("$sample", sampleDocument)
+        };
+
+        return await Collection.Aggregate<ContentItem>(pipeline).ToListAsync();
     }
 
     public async Task<IEnumerable<ContentItem>> FindByTypeAsync(
         ContentType contentType,
         int limit = 20)
     {
-        return await Collection
-            .Find(x => x.ContentType == contentType)
-            .Limit(limit)
-            .ToListAsync();
+        var matchDocument = new BsonDocument
+        {
+            { "ContentType", contentType.ToString() }
+        };
+
+        var sampleDocument = new BsonDocument("size", limit);
+
+        var pipeline = new[]
+        {
+            new BsonDocument("$match", matchDocument),
+            new BsonDocument("$sample", sampleDocument)
+        };
+
+        return await Collection.Aggregate<ContentItem>(pipeline).ToListAsync();
     }
 
     public async Task<IEnumerable<ContentItem>> FindNonExpiredAsync(int limit = 100)

@@ -13,19 +13,18 @@ namespace SoftFocusBackend.Library.Infrastructure.Services;
 public class EmotionContentMatcherService : IEmotionContentMatcher
 {
     private readonly IContentItemRepository _contentRepository;
+    private readonly ICachePopulationService _cachePopulationService;
     private readonly ILogger<EmotionContentMatcherService> _logger;
 
-    // Mapeo de emociones a géneros de TMDB
     private static readonly Dictionary<EmotionalTag, int[]> EmotionToMovieGenres = new()
     {
-        { EmotionalTag.Happy, new[] { 35, 10751, 10749 } },      // Comedy, Family, Romance
-        { EmotionalTag.Energetic, new[] { 28, 12, 878 } },       // Action, Adventure, Sci-Fi
-        { EmotionalTag.Calm, new[] { 18, 99, 36 } },             // Drama, Documentary, History
-        { EmotionalTag.Sad, new[] { 18, 10749 } },               // Drama, Romance
-        { EmotionalTag.Anxious, new[] { 10751, 16, 10402 } }     // Family, Animation, Music (evitar thriller/horror)
+        { EmotionalTag.Happy, new[] { 35, 10751, 10749 } },
+        { EmotionalTag.Energetic, new[] { 28, 12, 878 } },
+        { EmotionalTag.Calm, new[] { 18, 99, 36 } },
+        { EmotionalTag.Sad, new[] { 18, 10749 } },
+        { EmotionalTag.Anxious, new[] { 10751, 16, 10402 } }
     };
 
-    // Mapeo de emociones a queries de Spotify
     private static readonly Dictionary<EmotionalTag, string> EmotionToSpotifyQuery = new()
     {
         { EmotionalTag.Happy, "happy upbeat positive cheerful" },
@@ -35,7 +34,6 @@ public class EmotionContentMatcherService : IEmotionContentMatcher
         { EmotionalTag.Anxious, "calming anxiety relief stress soothing" }
     };
 
-    // Mapeo de emociones a queries de YouTube
     private static readonly Dictionary<EmotionalTag, string> EmotionToYouTubeQuery = new()
     {
         { EmotionalTag.Anxious, "ejercicios respiración ansiedad meditación guiada" },
@@ -47,9 +45,11 @@ public class EmotionContentMatcherService : IEmotionContentMatcher
 
     public EmotionContentMatcherService(
         IContentItemRepository contentRepository,
+        ICachePopulationService cachePopulationService,
         ILogger<EmotionContentMatcherService> logger)
     {
         _contentRepository = contentRepository;
+        _cachePopulationService = cachePopulationService;
         _logger = logger;
     }
 
@@ -67,23 +67,57 @@ public class EmotionContentMatcherService : IEmotionContentMatcher
                     emotion,
                     limit
                 );
+
+                if (!results.Any())
+                {
+                    _logger.LogInformation(
+                        "No content found in cache for emotion {Emotion} and type {Type}, populating from APIs",
+                        emotion, contentType);
+
+                    var populated = await _cachePopulationService.PopulateCacheForTypeAsync(
+                        contentType.Value,
+                        emotion,
+                        limit
+                    );
+
+                    results = populated;
+                }
+
                 return results.ToList();
             }
             else
             {
-                // Buscar en todos los tipos
                 var results = new List<ContentItem>();
 
                 foreach (ContentType type in Enum.GetValues(typeof(ContentType)))
                 {
-                    if (type == ContentType.Place) continue; // Lugares se manejan aparte
+                    if (type == ContentType.Place) continue;
 
                     var typeResults = await _contentRepository.FindByTypeAndEmotionAsync(
                         type,
                         emotion,
-                        limit / 4 // Dividir el límite entre los tipos
+                        limit / 4
                     );
                     results.AddRange(typeResults);
+                }
+
+                if (!results.Any())
+                {
+                    _logger.LogInformation(
+                        "No content found in cache for emotion {Emotion}, populating from APIs",
+                        emotion);
+
+                    foreach (ContentType type in Enum.GetValues(typeof(ContentType)))
+                    {
+                        if (type == ContentType.Place) continue;
+
+                        var populated = await _cachePopulationService.PopulateCacheForTypeAsync(
+                            type,
+                            emotion,
+                            limit / 4
+                        );
+                        results.AddRange(populated);
+                    }
                 }
 
                 return results.Take(limit).ToList();
