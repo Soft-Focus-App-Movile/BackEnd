@@ -95,4 +95,9 @@ public class MongoNotificationRepository : BaseRepository<NotificationAggregate>
         var filter = Builders<NotificationAggregate>.Filter.Eq(n => n.Id, notificationId);
         return await Collection.Find(filter).FirstOrDefaultAsync();
     }
+    public async Task DeleteAsync(string id)
+    {
+        var filter = Builders<NotificationAggregate>.Filter.Eq(n => n.Id, id);
+        await Collection.DeleteOneAsync(filter);
+    }
 }

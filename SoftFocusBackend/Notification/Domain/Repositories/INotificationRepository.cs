@@ -13,4 +13,5 @@ public interface INotificationRepository : IBaseRepository<Model.Aggregates.Noti
     public Task CreateAsync(Model.Aggregates.Notification notification);
     Task UpdateAsync(string notificationId, Model.Aggregates.Notification notification);
     Task<Model.Aggregates.Notification> GetByIdAsync(string notificationId);
+    Task DeleteAsync(string id);
 }

@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 using SoftFocusBackend.Notification.Application.Internal.CommandServices;
 using SoftFocusBackend.Notification.Application.Internal.QueryServices;
 using SoftFocusBackend.Notification.Domain.Model.Commands;
@@ -31,6 +32,197 @@ public class NotificationController : ControllerBase
         _preferenceQueryService = preferenceQueryService;
     }
 
+    // ========== ENDPOINTS COMPLETOS QUE COINCIDEN CON KOTLIN ==========
+
+    // GET: api/v1/notifications - Obtener todas las notificaciones del usuario actual
+    [HttpGet]
+    public async Task<IActionResult> GetNotifications(
+        [FromQuery] string? status = null,
+        [FromQuery] string? type = null,
+        [FromQuery] int page = 0,
+        [FromQuery] int size = 20)
+    {
+        try
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized(new { error = "User not authenticated" });
+
+            var query = new GetNotificationHistoryQuery(userId, type, null, null, page, size);
+            var notifications = await _historyQueryService.HandleAsync(query) ?? Enumerable.Empty<NotificationAggregate>();
+
+            var resources = notifications.Select(NotificationResourceAssembler.ToResource);
+            
+            return Ok(new NotificationListResponse 
+            { 
+                Notifications = resources.ToList(),
+                TotalCount = notifications.Count(),
+                Page = page,
+                PageSize = size
+            });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    // GET: api/v1/notifications/{userId} - Obtener notificaciones de usuario específico (para admin)
+    [HttpGet("{userId}")]
+    public async Task<IActionResult> GetNotificationsByUserId(
+        string userId,
+        [FromQuery] string? status = null,
+        [FromQuery] string? type = null,
+        [FromQuery] int page = 0,
+        [FromQuery] int size = 20)
+    {
+        try
+        {
+            var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(currentUserId))
+                return Unauthorized(new { error = "User not authenticated" });
+
+            // Aquí podrías agregar validación de rol admin si es necesario
+            var query = new GetNotificationHistoryQuery(userId, type, null, null, page, size);
+            var notifications = await _historyQueryService.HandleAsync(query) ?? Enumerable.Empty<NotificationAggregate>();
+
+            var resources = notifications.Select(NotificationResourceAssembler.ToResource);
+            
+            return Ok(new NotificationListResponse 
+            { 
+                Notifications = resources.ToList(),
+                TotalCount = notifications.Count(),
+                Page = page,
+                PageSize = size
+            });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    // GET: api/v1/notifications/detail/{notificationId} - Obtener notificación específica
+    [HttpGet("detail/{notificationId}")]
+    public async Task<IActionResult> GetNotificationById(string notificationId)
+    {
+        try
+        {
+            var query = new GetNotificationByIdQuery(notificationId);
+            var notification = await _historyQueryService.HandleAsync(query);
+
+            if (notification == null)
+                return NotFound(new { error = "Notification not found" });
+
+            var resource = NotificationResourceAssembler.ToResource(notification);
+            return Ok(resource);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    // POST: api/v1/notifications/{notificationId}/read - Marcar como leída
+    [HttpPost("{notificationId}/read")]
+    public async Task<IActionResult> MarkAsRead(string notificationId)
+    {
+        try
+        {
+            var query = new GetNotificationByIdQuery(notificationId);
+            var notification = await _historyQueryService.HandleAsync(query);
+
+            if (notification == null)
+                return NotFound(new { error = "Notification not found" });
+
+            notification.MarkAsRead();
+            await _sendCommandService.UpdateAsync(notification);
+
+            return Ok(new { message = "Notification marked as read", notificationId });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    // POST: api/v1/notifications/read-all - Marcar todas como leídas
+    [HttpPost("read-all")]
+    public async Task<IActionResult> MarkAllAsRead()
+    {
+        try
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized(new { error = "User not authenticated" });
+
+            var unreadQuery = new GetUnreadNotificationsQuery(userId);
+            var unreadNotifications = await _historyQueryService.HandleAsync(unreadQuery) ?? Enumerable.Empty<NotificationAggregate>();
+
+            foreach (var notification in unreadNotifications)
+            {
+                notification.MarkAsRead();
+                await _sendCommandService.UpdateAsync(notification);
+            }
+
+            return Ok(new { 
+                message = "All notifications marked as read", 
+                count = unreadNotifications.Count() 
+            });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    // DELETE: api/v1/notifications/{notificationId} - Eliminar notificación
+    [HttpDelete("{notificationId}")]
+    public async Task<IActionResult> DeleteNotification(string notificationId)
+    {
+        try
+        {
+            var query = new GetNotificationByIdQuery(notificationId);
+            var notification = await _historyQueryService.HandleAsync(query);
+
+            if (notification == null)
+                return NotFound(new { error = "Notification not found" });
+
+            await _sendCommandService.DeleteAsync(notification);
+            
+            return Ok(new { 
+                message = "Notification deleted successfully", 
+                notificationId 
+            });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    // GET: api/v1/notifications/unread-count - Obtener contador de no leídas
+    [HttpGet("unread-count")]
+    public async Task<IActionResult> GetUnreadCount()
+    {
+        try
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized(new { error = "User not authenticated" });
+
+            var query = new GetUnreadNotificationsQuery(userId);
+            var unreadNotifications = await _historyQueryService.HandleAsync(query) ?? Enumerable.Empty<NotificationAggregate>();
+
+            return Ok(new UnreadCountResponse { UnreadCount = unreadNotifications.Count() });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    // POST: api/v1/notifications - Crear nueva notificación (endpoint original)
     [HttpPost]
     public async Task<IActionResult> SendNotification([FromBody] SendNotificationRequest request)
     {
@@ -51,54 +243,8 @@ public class NotificationController : ControllerBase
             if (notification == null)
                 return BadRequest(new { error = "Notification could not be created." });
 
-            // Uso del alias NotificationAggregate
             var resource = NotificationResourceAssembler.ToResource(notification as NotificationAggregate);
-
             return Ok(resource);
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
-    }
-
-    [HttpGet("{userId}")]
-    public async Task<IActionResult> GetNotificationHistory(
-        string userId,
-        [FromQuery] string? type = null,
-        [FromQuery] DateTime? startDate = null,
-        [FromQuery] DateTime? endDate = null,
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20)
-    {
-        var query = new GetNotificationHistoryQuery(userId, type, startDate, endDate, page, pageSize);
-        var notifications = await _historyQueryService.HandleAsync(query) ?? Enumerable.Empty<NotificationAggregate>();
-
-        var resources = notifications.Select(n => NotificationResourceAssembler.ToResource(n));
-
-        return Ok(resources);
-    }
-
-    [HttpPost("{notificationId}/read")]
-    public async Task<IActionResult> MarkAsRead(string notificationId)
-    {
-        try
-        {
-            // Creamos la query por ID
-            var query = new GetNotificationByIdQuery(notificationId);
-
-            // Llamamos al QueryService
-            var notification = await _historyQueryService.HandleAsync(query);
-
-            if (notification == null)
-                return NotFound(new { error = "Notification not found." });
-
-            notification.MarkAsRead();
-
-            // Actualizamos la notificación
-            await _sendCommandService.UpdateAsync(notification);
-
-            return Ok(new { message = "Notification marked as read" });
         }
         catch (Exception ex)
         {
