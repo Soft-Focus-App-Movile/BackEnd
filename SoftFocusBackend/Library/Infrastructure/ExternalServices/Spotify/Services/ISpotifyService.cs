@@ -28,4 +28,6 @@ public interface ISpotifyService
     /// Autentica y obtiene un access token (Client Credentials Flow)
     /// </summary>
     Task<string?> GetAccessTokenAsync();
+
+    Task<List<ContentItem>> GetPopularTracksAsync(int limit = 20);
 }

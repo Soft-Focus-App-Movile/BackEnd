@@ -118,11 +118,11 @@ public class CachePopulationService : ICachePopulationService
             if (emotionFilter.HasValue)
             {
                 var genreIds = GetMovieGenresForEmotion(emotionFilter.Value);
-                results = await _tmdbService.SearchMoviesByGenresAsync(query, genreIds, limit);
+                results = await _tmdbService.GetMoviesByGenresAsync(genreIds, limit);
             }
             else
             {
-                results = await _tmdbService.SearchMoviesAsync(query, limit);
+                results = await _tmdbService.GetPopularMoviesAsync(limit);
             }
 
             return results;
@@ -177,7 +177,7 @@ public class CachePopulationService : ICachePopulationService
             }
             else
             {
-                results = await _spotifyService.SearchTracksAsync(query, limit);
+                results = await _spotifyService.GetPopularTracksAsync(limit);
             }
 
             return results;
@@ -223,7 +223,11 @@ public class CachePopulationService : ICachePopulationService
         return items.Where(item =>
         {
             bool hasTitle = !string.IsNullOrWhiteSpace(item.Metadata.Title);
-            bool hasOverview = !string.IsNullOrWhiteSpace(item.Metadata.Overview);
+
+            bool hasOverview = item.ContentType == ContentType.Music
+                ? true
+                : !string.IsNullOrWhiteSpace(item.Metadata.Overview);
+
             bool hasImage = !string.IsNullOrWhiteSpace(item.Metadata.PosterUrl) ||
                            !string.IsNullOrWhiteSpace(item.Metadata.BackdropUrl) ||
                            !string.IsNullOrWhiteSpace(item.Metadata.ThumbnailUrl) ||
@@ -231,7 +235,11 @@ public class CachePopulationService : ICachePopulationService
 
             bool hasEmotionalTags = item.EmotionalTags != null && item.EmotionalTags.Any();
 
-            return hasTitle && hasOverview && hasImage && hasEmotionalTags;
+            bool hasArtist = item.ContentType == ContentType.Music
+                ? !string.IsNullOrWhiteSpace(item.Metadata.Artist)
+                : true;
+
+            return hasTitle && hasOverview && hasImage && hasEmotionalTags && hasArtist;
         }).ToList();
     }
 
