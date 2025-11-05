@@ -26,29 +26,41 @@ public class PreferenceController : ControllerBase
         _queryService = queryService;
     }
 
+    // GET: api/v1/preferences - Obtener preferencias
     [HttpGet]
     public async Task<IActionResult> GetPreferences()
     {
-        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (string.IsNullOrEmpty(userId))
-            return Unauthorized();
+        try
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized(new { error = "User not authenticated" });
 
-        var query = new GetPreferencesQuery(userId);
-        var preferences = await _queryService.HandleAsync(query);
-        var resources = preferences.Select(NotificationResourceAssembler.ToResource);
+            var query = new GetPreferencesQuery(userId);
+            var preferences = await _queryService.HandleAsync(query);
+            var resources = preferences.Select(NotificationResourceAssembler.ToResource);
 
-        return Ok(resources);
+            return Ok(new PreferenceListResponse 
+            { 
+                Preferences = resources.ToList() 
+            });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
     }
 
+    // PUT: api/v1/preferences - Actualizar preferencias
     [HttpPut]
     public async Task<IActionResult> UpdatePreferences([FromBody] UpdatePreferenceRequest request)
     {
-        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (string.IsNullOrEmpty(userId))
-            return Unauthorized();
-
         try
         {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized(new { error = "User not authenticated" });
+
             var command = new UpdatePreferencesCommand(
                 userId,
                 request.NotificationType,
@@ -61,6 +73,34 @@ public class PreferenceController : ControllerBase
             var resource = NotificationResourceAssembler.ToResource(preference);
 
             return Ok(resource);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    // POST: api/v1/preferences/reset - Restablecer preferencias
+    [HttpPost("reset")]
+    public async Task<IActionResult> ResetPreferences()
+    {
+        try
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized(new { error = "User not authenticated" });
+
+            // 🆕 USAR EL NUEVO COMMAND PARA RESET
+            var resetCommand = new ResetPreferencesCommand(userId);
+            var resetPreferences = await _updateCommandService.HandleAsync(resetCommand);
+            
+            var resources = resetPreferences.Select(NotificationResourceAssembler.ToResource);
+
+            return Ok(new PreferenceListResponse 
+            { 
+                Preferences = resources.ToList(),
+                Message = "Preferences reset to default values successfully"
+            });
         }
         catch (Exception ex)
         {

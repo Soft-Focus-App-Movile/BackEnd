@@ -38,6 +38,6 @@ public class ContentSearchQueryService : IContentSearchQueryService
     {
         query.Validate();
 
-        return await _contentRepository.FindByIdAsync(query.ContentId);
+        return await _contentRepository.FindByExternalIdAsync(query.ContentId);
     }
 }

@@ -9,4 +9,5 @@ public interface INotificationPreferenceRepository : IBaseRepository<Notificatio
     Task<NotificationPreference?> GetByUserAndTypeAsync(string userId, string notificationType);
     Task CreateAsync(NotificationPreference preference);
     Task UpdateAsync(string preferenceId, NotificationPreference preference);
+    Task DeleteAsync(string id);
 }
