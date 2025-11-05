@@ -63,7 +63,7 @@ namespace SoftFocusBackend.Notification.Application.Internal.CommandServices
             return notification;
         }
 
-        // 🔹 Nuevo método: actualizar notificación existente
+        // 🔹 Método: actualizar notificación existente
         public async Task UpdateAsync(Domain.Model.Aggregates.Notification notification)
         {
             if (notification == null)
@@ -72,5 +72,13 @@ namespace SoftFocusBackend.Notification.Application.Internal.CommandServices
             await _notificationRepository.UpdateAsync(notification.Id, notification);
         }
 
+        // Eliminar notificación
+        public async Task DeleteAsync(Domain.Model.Aggregates.Notification notification)
+        {
+            if (notification == null)
+                throw new ArgumentNullException(nameof(notification));
+
+            await _notificationRepository.DeleteAsync(notification.Id);
+        }
     }
 }

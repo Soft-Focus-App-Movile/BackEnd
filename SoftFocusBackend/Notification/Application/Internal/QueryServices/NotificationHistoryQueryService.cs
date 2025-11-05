@@ -41,5 +41,11 @@ namespace SoftFocusBackend.Notification.Application.Internal.QueryServices
         {
             return await _notificationRepository.GetByIdAsync(query.NotificationId);
         }
+
+        //Obtener notificaciones no leídas
+        public async Task<IEnumerable<NotificationAggregate>> HandleAsync(GetUnreadNotificationsQuery query)
+        {
+            return await _notificationRepository.GetUnreadByUserIdAsync(query.UserId);
+        }
     }
 }

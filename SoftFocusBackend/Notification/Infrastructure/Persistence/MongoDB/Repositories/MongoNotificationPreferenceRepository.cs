@@ -8,7 +8,7 @@ namespace SoftFocusBackend.Notification.Infrastructure.Persistence.MongoDB.Repos
 
 public class MongoNotificationPreferenceRepository : BaseRepository<NotificationPreference>, INotificationPreferenceRepository
 {
-    public MongoNotificationPreferenceRepository(MongoDbContext context) : base(context, "notifications")
+    public MongoNotificationPreferenceRepository(MongoDbContext context) : base(context, "notification_preferences") // 🆕 Cambié el nombre de la colección
     {
         // Create indexes
         var indexKeys = Builders<NotificationPreference>.IndexKeys;
@@ -40,13 +40,22 @@ public class MongoNotificationPreferenceRepository : BaseRepository<Notification
         return await Collection.Find(filter).FirstOrDefaultAsync();
     }
 
-    public Task CreateAsync(NotificationPreference preference)
+    // 🆕 IMPLEMENTAR LOS MÉTODOS FALTANTES
+
+    public async Task CreateAsync(NotificationPreference preference)
     {
-        throw new NotImplementedException();
+        await Collection.InsertOneAsync(preference);
     }
 
-    public Task UpdateAsync(string preferenceId, NotificationPreference preference)
+    public async Task UpdateAsync(string preferenceId, NotificationPreference preference)
     {
-        throw new NotImplementedException();
+        var filter = Builders<NotificationPreference>.Filter.Eq(p => p.Id, preferenceId);
+        await Collection.ReplaceOneAsync(filter, preference);
+    }
+
+    public async Task DeleteAsync(string id)
+    {
+        var filter = Builders<NotificationPreference>.Filter.Eq(p => p.Id, id);
+        await Collection.DeleteOneAsync(filter);
     }
 }
