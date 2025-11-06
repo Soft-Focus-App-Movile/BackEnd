@@ -9,6 +9,7 @@ public record DeliveryStatus
     public static readonly DeliveryStatus Pending = new("Pending");
     public static readonly DeliveryStatus Sent = new("Sent");
     public static readonly DeliveryStatus Delivered = new("Delivered");
+    public static readonly DeliveryStatus Read = new("Read"); // ← NUEVO
     public static readonly DeliveryStatus Failed = new("Failed");
     public static readonly DeliveryStatus Cancelled = new("Cancelled");
     
@@ -19,6 +20,7 @@ public record DeliveryStatus
             "Pending" => Pending,
             "Sent" => Sent,
             "Delivered" => Delivered,
+            "Read" => Read, // ← NUEVO
             "Failed" => Failed,
             "Cancelled" => Cancelled,
             _ => throw new ArgumentException($"Invalid delivery status: {value}")

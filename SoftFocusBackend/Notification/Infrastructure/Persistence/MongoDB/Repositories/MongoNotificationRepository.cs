@@ -46,7 +46,7 @@ public class MongoNotificationRepository : BaseRepository<NotificationAggregate>
         var filter = Builders<NotificationAggregate>.Filter.And(
             Builders<NotificationAggregate>.Filter.Eq(n => n.UserId, userId),
             Builders<NotificationAggregate>.Filter.Eq(n => n.ReadAt, null),
-            Builders<NotificationAggregate>.Filter.Eq(n => n.Status, DeliveryStatus.Delivered.ToString())
+            Builders<NotificationAggregate>.Filter.Ne(n => n.Status, DeliveryStatus.Read.ToString()) // ← CORRECCIÓN
         );
 
         return await Collection.Find(filter).ToListAsync();
@@ -73,7 +73,7 @@ public class MongoNotificationRepository : BaseRepository<NotificationAggregate>
         var filter = Builders<NotificationAggregate>.Filter.And(
             Builders<NotificationAggregate>.Filter.Eq(n => n.UserId, userId),
             Builders<NotificationAggregate>.Filter.Eq(n => n.ReadAt, null),
-            Builders<NotificationAggregate>.Filter.Eq(n => n.Status, DeliveryStatus.Delivered.ToString())
+            Builders<NotificationAggregate>.Filter.Ne(n => n.Status, DeliveryStatus.Read.ToString()) // ← CORRECCIÓN
         );
 
         return (int)await Collection.CountDocumentsAsync(filter);
