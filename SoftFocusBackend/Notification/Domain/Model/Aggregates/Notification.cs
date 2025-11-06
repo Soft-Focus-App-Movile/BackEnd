@@ -8,6 +8,7 @@ namespace SoftFocusBackend.Notification.Domain.Model.Aggregates;
 public class Notification : BaseEntity
 {
     [BsonElement("user_id")]
+    [BsonRepresentation(BsonType.ObjectId)]
     public string UserId { get; set; } = string.Empty;
     
     [BsonElement("type")]
@@ -70,6 +71,7 @@ public class Notification : BaseEntity
     
     public void MarkAsRead()
     {
+        Status = DeliveryStatus.Read.ToString(); 
         ReadAt = DateTime.UtcNow;
     }
     

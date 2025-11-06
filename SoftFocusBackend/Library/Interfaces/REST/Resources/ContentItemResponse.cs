@@ -9,8 +9,10 @@ public class ContentItemResponse
     public string BackdropUrl { get; set; } = string.Empty;
     public double Rating { get; set; }
     public string Duration { get; set; } = string.Empty;
+    public string ReleaseDate { get; set; } = string.Empty;
     public string Overview { get; set; } = string.Empty;
     public string TrailerUrl { get; set; } = string.Empty;
+    public List<string> Genres { get; set; } = new();
     public List<string> EmotionalTags { get; set; } = new();
     public string ExternalUrl { get; set; } = string.Empty;
 

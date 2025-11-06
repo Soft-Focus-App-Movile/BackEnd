@@ -130,6 +130,71 @@ public static class PsychologistResourceAssembler
         };
     }
 
+    public static PsychologistCompleteProfileResource ToCompleteProfileResource(PsychologistUser psychologist)
+    {
+        return new PsychologistCompleteProfileResource
+        {
+            // Basic User Data
+            Id = psychologist.Id,
+            Email = psychologist.Email,
+            FullName = psychologist.FullName,
+            FirstName = psychologist.FirstName,
+            LastName = psychologist.LastName,
+            UserType = psychologist.UserType.ToString(),
+            DateOfBirth = psychologist.DateOfBirth,
+            Gender = psychologist.Gender,
+            Phone = psychologist.Phone,
+            ProfileImageUrl = psychologist.ProfileImageUrl,
+            Bio = psychologist.Bio,
+            Country = psychologist.Country,
+            City = psychologist.City,
+            Interests = psychologist.Interests,
+            MentalHealthGoals = psychologist.MentalHealthGoals,
+            EmailNotifications = psychologist.EmailNotifications,
+            PushNotifications = psychologist.PushNotifications,
+            IsProfilePublic = psychologist.IsProfilePublic,
+            IsActive = psychologist.IsActive,
+            LastLogin = psychologist.LastLogin,
+            CreatedAt = psychologist.CreatedAt,
+            UpdatedAt = psychologist.UpdatedAt,
+
+            // Verification Data
+            LicenseNumber = psychologist.LicenseNumber,
+            ProfessionalCollege = psychologist.ProfessionalCollege,
+            CollegeRegion = psychologist.CollegeRegion,
+            Specialties = psychologist.Specialties,
+            YearsOfExperience = psychologist.YearsOfExperience,
+            University = psychologist.University,
+            GraduationYear = psychologist.GraduationYear,
+            Degree = psychologist.Degree,
+            LicenseDocumentUrl = psychologist.LicenseDocumentUrl,
+            DiplomaCertificateUrl = psychologist.DiplomaCertificateUrl,
+            IdentityDocumentUrl = psychologist.IdentityDocumentUrl,
+            AdditionalCertificatesUrls = psychologist.AdditionalCertificatesUrls,
+            IsVerified = psychologist.IsVerified,
+            VerificationDate = psychologist.VerificationDate,
+            VerifiedBy = psychologist.VerifiedBy,
+            VerificationNotes = psychologist.VerificationNotes,
+
+            // Professional Data
+            ProfessionalBio = psychologist.ProfessionalBio,
+            IsAcceptingNewPatients = psychologist.IsAcceptingNewPatients,
+            MaxPatientsCapacity = psychologist.MaxPatientsCapacity,
+            CurrentPatientsCount = psychologist.CurrentPatientsCount,
+            TargetAudience = psychologist.TargetAudience,
+            Languages = psychologist.Languages,
+            BusinessName = psychologist.BusinessName,
+            BusinessAddress = psychologist.BusinessAddress,
+            BankAccount = psychologist.BankAccount,
+            PaymentMethods = psychologist.PaymentMethods,
+            Currency = psychologist.Currency,
+            IsProfileVisibleInDirectory = psychologist.IsProfileVisibleInDirectory,
+            AllowsDirectMessages = psychologist.AllowsDirectMessages,
+            AverageRating = psychologist.AverageRating,
+            TotalReviews = psychologist.TotalReviews
+        };
+    }
+
     public static object ToErrorResponse(string message, string? details = null)
     {
         return new

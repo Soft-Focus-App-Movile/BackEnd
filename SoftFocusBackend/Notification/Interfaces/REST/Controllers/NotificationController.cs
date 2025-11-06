@@ -1,12 +1,15 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using MongoDB.Bson;
+using MongoDB.Driver;
 using SoftFocusBackend.Notification.Application.Internal.CommandServices;
 using SoftFocusBackend.Notification.Application.Internal.QueryServices;
 using SoftFocusBackend.Notification.Domain.Model.Commands;
 using SoftFocusBackend.Notification.Domain.Model.Queries;
 using SoftFocusBackend.Notification.Interfaces.REST.Resources;
 using SoftFocusBackend.Notification.Interfaces.REST.Transform;
+using SoftFocusBackend.Shared.Infrastructure.Persistence.MongoDB.Context;
 
 // Alias para evitar conflicto de nombres
 using NotificationAggregate = SoftFocusBackend.Notification.Domain.Model.Aggregates.Notification;
@@ -21,32 +24,63 @@ public class NotificationController : ControllerBase
     private readonly SendNotificationCommandService _sendCommandService;
     private readonly NotificationHistoryQueryService _historyQueryService;
     private readonly PreferenceQueryService _preferenceQueryService;
+    private readonly MongoDbContext _context;
 
     public NotificationController(
         SendNotificationCommandService sendCommandService,
         NotificationHistoryQueryService historyQueryService,
-        PreferenceQueryService preferenceQueryService)
+        PreferenceQueryService preferenceQueryService,
+        MongoDbContext context)
     {
         _sendCommandService = sendCommandService;
         _historyQueryService = historyQueryService;
         _preferenceQueryService = preferenceQueryService;
+        _context = context;
     }
-
-    // ========== ENDPOINTS COMPLETOS QUE COINCIDEN CON KOTLIN ==========
 
     // GET: api/v1/notifications - Obtener todas las notificaciones del usuario actual
     [HttpGet]
     public async Task<IActionResult> GetNotifications(
         [FromQuery] string? status = null,
         [FromQuery] string? type = null,
-        [FromQuery] int page = 0,
-        [FromQuery] int size = 20)
+        [FromQuery] int page = 1,
+        [FromQuery] int size = 20,
+        [FromQuery] bool debug = false) // ← NUEVO: Parámetro de debug
     {
         try
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(userId))
                 return Unauthorized(new { error = "User not authenticated" });
+
+            // 🔍 MODO DEBUG: Ver qué está pasando
+            if (debug)
+            {
+                var collection = _context.GetCollection<BsonDocument>("notifications");
+                var allNotifications = await collection.Find(new BsonDocument()).Limit(10).ToListAsync();
+                
+                var debugInfo = new
+                {
+                    userIdFromToken = userId,
+                    userIdIsValidObjectId = ObjectId.TryParse(userId, out _),
+                    totalNotificationsInDB = allNotifications.Count,
+                    notificationsInDB = allNotifications.Select(n => new
+                    {
+                        id = n.GetValue("_id", BsonNull.Value).ToString(),
+                        userId = n.GetValue("user_id", BsonNull.Value).ToString(),
+                        userIdType = n.GetValue("user_id", BsonNull.Value).BsonType.ToString(),
+                        title = n.GetValue("title", BsonNull.Value).ToString(),
+                        match = n.GetValue("user_id", BsonNull.Value).ToString() == userId
+                    }).ToList()
+                };
+
+                return Ok(new
+                {
+                    message = "🔍 DEBUG MODE ACTIVATED",
+                    debug = debugInfo,
+                    hint = "Check if userIdFromToken matches any userId in notificationsInDB"
+                });
+            }
 
             var query = new GetNotificationHistoryQuery(userId, type, null, null, page, size);
             var notifications = await _historyQueryService.HandleAsync(query) ?? Enumerable.Empty<NotificationAggregate>();
@@ -63,7 +97,7 @@ public class NotificationController : ControllerBase
         }
         catch (Exception ex)
         {
-            return BadRequest(new { error = ex.Message });
+            return BadRequest(new { error = ex.Message, stackTrace = ex.StackTrace });
         }
     }
 
@@ -73,7 +107,7 @@ public class NotificationController : ControllerBase
         string userId,
         [FromQuery] string? status = null,
         [FromQuery] string? type = null,
-        [FromQuery] int page = 0,
+        [FromQuery] int page = 1,
         [FromQuery] int size = 20)
     {
         try
@@ -82,7 +116,6 @@ public class NotificationController : ControllerBase
             if (string.IsNullOrEmpty(currentUserId))
                 return Unauthorized(new { error = "User not authenticated" });
 
-            // Aquí podrías agregar validación de rol admin si es necesario
             var query = new GetNotificationHistoryQuery(userId, type, null, null, page, size);
             var notifications = await _historyQueryService.HandleAsync(query) ?? Enumerable.Empty<NotificationAggregate>();
 
@@ -222,14 +255,19 @@ public class NotificationController : ControllerBase
         }
     }
 
-    // POST: api/v1/notifications - Crear nueva notificación (endpoint original)
+    // POST: api/v1/notifications - Crear nueva notificación
     [HttpPost]
     public async Task<IActionResult> SendNotification([FromBody] SendNotificationRequest request)
     {
         try
         {
+            // 🔧 CORRECCIÓN: Usar el userId del token, NO del request
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized(new { error = "User not authenticated" });
+
             var command = new SendNotificationCommand(
-                request.UserId,
+                userId, // ← Usar el userId del token
                 request.Type,
                 request.Title,
                 request.Content,
@@ -248,7 +286,7 @@ public class NotificationController : ControllerBase
         }
         catch (Exception ex)
         {
-            return BadRequest(new { error = ex.Message });
+            return BadRequest(new { error = ex.Message, stackTrace = ex.StackTrace });
         }
     }
 }
