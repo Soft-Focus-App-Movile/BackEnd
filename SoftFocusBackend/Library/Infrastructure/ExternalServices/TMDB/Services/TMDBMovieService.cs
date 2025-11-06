@@ -452,16 +452,58 @@ public class TMDBMovieService : ITMDBService
             _logger.LogInformation("TMDB: Creating ExternalContentId for movie {MovieId}", movie.Id);
             var externalId = ExternalContentId.CreateTmdbId(movie.Id.ToString(), ContentType.Movie);
 
-            _logger.LogInformation("TMDB: Getting trailer for movie {MovieId}", movie.Id);
-            var trailerUrl = await GetTrailerUrlAsync(movie.Id, "movie");
+            // Si no tenemos runtime (viene de /search), obtener detalles completos con trailer en una sola llamada
+            int runtime = movie.Runtime;
+            string releaseDate = movie.ReleaseDate ?? string.Empty;
+            var genres = movie.Genres;
+            string trailerUrl = string.Empty;
 
+            if (movie.Runtime == 0)
+            {
+                _logger.LogInformation("TMDB: Movie {MovieId} missing runtime, fetching full details with trailer", movie.Id);
+                var fullDetails = await GetMovieFullDetailsAsync(movie.Id);
+
+                if (fullDetails != null)
+                {
+                    runtime = fullDetails.Runtime;
+                    releaseDate = fullDetails.ReleaseDate ?? string.Empty;
+                    genres = fullDetails.Genres;
+                    trailerUrl = ExtractTrailerUrl(fullDetails);
+                }
+                else
+                {
+                    _logger.LogWarning("TMDB: Could not fetch full details for movie {MovieId}, using partial data", movie.Id);
+                }
+            }
+            else
+            {
+                // Ya tenemos runtime, solo obtener trailer
+                _logger.LogInformation("TMDB: Getting trailer for movie {MovieId}", movie.Id);
+                trailerUrl = await GetTrailerUrlAsync(movie.Id, "movie");
+            }
+
+            // Trailer es opcional, no descartamos la película si no lo tiene
             if (string.IsNullOrWhiteSpace(trailerUrl))
             {
                 _logger.LogDebug("TMDB: Movie {MovieId} ({Title}) has no trailer, continuing anyway", movie.Id, movie.Title);
             }
 
-            _logger.LogInformation("TMDB: Creating metadata for movie {MovieId} - Title: {Title}, PosterPath: {Poster}",
-                movie.Id, movie.Title, movie.PosterPath);
+            // Validar que tenga runtime
+            if (runtime == 0)
+            {
+                _logger.LogWarning("TMDB: Skipping movie {MovieId} ({Title}) - missing runtime", movie.Id, movie.Title);
+                return null;
+            }
+
+            // Validar que tenga releaseDate
+            if (string.IsNullOrWhiteSpace(releaseDate))
+            {
+                _logger.LogWarning("TMDB: Skipping movie {MovieId} ({Title}) - missing release date", movie.Id, movie.Title);
+                return null;
+            }
+
+            _logger.LogInformation("TMDB: Creating metadata for movie {MovieId} - Title: {Title}, Runtime: {Runtime}",
+                movie.Id, movie.Title, runtime);
 
             var metadata = ContentMetadata.CreateForMovie(
                 title: movie.Title,
@@ -469,9 +511,10 @@ public class TMDBMovieService : ITMDBService
                 posterUrl: _settings.GetPosterUrl(movie.PosterPath),
                 backdropUrl: _settings.GetBackdropUrl(movie.BackdropPath ?? string.Empty),
                 rating: movie.VoteAverage,
-                duration: movie.Runtime > 0 ? $"{movie.Runtime}min" : string.Empty,
+                duration: runtime > 0 ? $"{runtime}min" : string.Empty,
+                releaseDate: releaseDate,
                 trailerUrl: trailerUrl,
-                genres: movie.Genres?.Select(g => g.Name).ToList() ?? new List<string>()
+                genres: genres?.Select(g => g.Name).ToList() ?? new List<string>()
             );
 
             _logger.LogInformation("TMDB: Mapping genres to emotional tags for movie {MovieId}", movie.Id);
@@ -531,12 +574,59 @@ public class TMDBMovieService : ITMDBService
             }
 
             var externalId = ExternalContentId.CreateTmdbId(series.Id.ToString(), ContentType.Series);
-            var trailerUrl = await GetTrailerUrlAsync(series.Id, "tv");
 
+            // Si no tenemos número de temporadas (viene de /search), obtener detalles completos con trailer en una sola llamada
+            int numberOfSeasons = series.NumberOfSeasons;
+            string firstAirDate = series.FirstAirDate ?? string.Empty;
+            var genres = series.Genres;
+            string trailerUrl = string.Empty;
+
+            if (series.NumberOfSeasons == 0)
+            {
+                _logger.LogInformation("TMDB: Series {SeriesId} missing seasons, fetching full details with trailer", series.Id);
+                var fullDetails = await GetSeriesFullDetailsAsync(series.Id);
+
+                if (fullDetails != null)
+                {
+                    numberOfSeasons = fullDetails.NumberOfSeasons;
+                    firstAirDate = fullDetails.FirstAirDate ?? string.Empty;
+                    genres = fullDetails.Genres;
+                    trailerUrl = ExtractTrailerUrl(fullDetails);
+                }
+                else
+                {
+                    _logger.LogWarning("TMDB: Could not fetch full details for series {SeriesId}, using partial data", series.Id);
+                }
+            }
+            else
+            {
+                // Ya tenemos temporadas, solo obtener trailer
+                _logger.LogInformation("TMDB: Getting trailer for series {SeriesId}", series.Id);
+                trailerUrl = await GetTrailerUrlAsync(series.Id, "tv");
+            }
+
+            // Trailer es opcional, no descartamos la serie si no lo tiene
             if (string.IsNullOrWhiteSpace(trailerUrl))
             {
                 _logger.LogDebug("TMDB: Series {SeriesId} ({Title}) has no trailer, continuing anyway", series.Id, title);
             }
+
+            // Validar que tenga número de temporadas
+            if (numberOfSeasons == 0)
+            {
+                _logger.LogWarning("TMDB: Skipping series {SeriesId} ({Title}) - missing seasons", series.Id, title);
+                return null;
+            }
+
+            // Validar que tenga firstAirDate
+            if (string.IsNullOrWhiteSpace(firstAirDate))
+            {
+                _logger.LogWarning("TMDB: Skipping series {SeriesId} ({Title}) - missing first air date", series.Id, title);
+                return null;
+            }
+
+            _logger.LogInformation("TMDB: Creating metadata for series {SeriesId} - Title: {Title}, Seasons: {Seasons}",
+                series.Id, title, numberOfSeasons);
 
             var metadata = ContentMetadata.CreateForMovie(
                 title: title,
@@ -544,9 +634,10 @@ public class TMDBMovieService : ITMDBService
                 posterUrl: _settings.GetPosterUrl(series.PosterPath),
                 backdropUrl: _settings.GetBackdropUrl(series.BackdropPath ?? string.Empty),
                 rating: series.VoteAverage,
-                duration: series.NumberOfSeasons > 0 ? $"{series.NumberOfSeasons} temporadas" : string.Empty,
+                duration: numberOfSeasons > 0 ? $"{numberOfSeasons} temporadas" : string.Empty,
+                releaseDate: firstAirDate,
                 trailerUrl: trailerUrl,
-                genres: series.Genres?.Select(g => g.Name).ToList() ?? new List<string>()
+                genres: genres?.Select(g => g.Name).ToList() ?? new List<string>()
             );
 
             var emotionalTags = MapGenresToEmotionalTags(series.GenreIds ?? new List<int>());
@@ -565,6 +656,107 @@ public class TMDBMovieService : ITMDBService
             _logger.LogError(ex, "Error converting TMDB series to ContentItem");
             return null;
         }
+    }
+
+    /// <summary>
+    /// Obtiene detalles completos de una película incluyendo runtime y videos en una sola llamada
+    /// </summary>
+    private async Task<TMDBMovieWithVideos?> GetMovieFullDetailsAsync(int movieId)
+    {
+        try
+        {
+            var url = $"{_settings.BaseUrl}/movie/{movieId}?api_key={_settings.ApiKey}&language={_settings.Language}&append_to_response=videos";
+
+            _logger.LogInformation("TMDB: Getting full movie details with videos for {MovieId}", movieId);
+
+            var response = await _httpClient.GetAsync(url);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("TMDB API error getting movie details: {StatusCode}", response.StatusCode);
+                return null;
+            }
+
+            var content = await response.Content.ReadAsStringAsync();
+            var movie = JsonSerializer.Deserialize<TMDBMovieWithVideos>(content, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+
+            return movie;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting full movie details from TMDB for {MovieId}", movieId);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Obtiene detalles completos de una serie incluyendo seasons y videos en una sola llamada
+    /// </summary>
+    private async Task<TMDBMovieWithVideos?> GetSeriesFullDetailsAsync(int seriesId)
+    {
+        try
+        {
+            var url = $"{_settings.BaseUrl}/tv/{seriesId}?api_key={_settings.ApiKey}&language={_settings.Language}&append_to_response=videos";
+
+            _logger.LogInformation("TMDB: Getting full series details with videos for {SeriesId}", seriesId);
+
+            var response = await _httpClient.GetAsync(url);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("TMDB API error getting series details: {StatusCode}", response.StatusCode);
+                return null;
+            }
+
+            var content = await response.Content.ReadAsStringAsync();
+            var series = JsonSerializer.Deserialize<TMDBMovieWithVideos>(content, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+
+            return series;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting full series details from TMDB for {SeriesId}", seriesId);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Extrae la URL del trailer de un objeto TMDBMovieWithVideos
+    /// </summary>
+    private string ExtractTrailerUrl(TMDBMovieWithVideos? movieWithVideos)
+    {
+        if (movieWithVideos?.Videos?.Results == null)
+        {
+            _logger.LogDebug("TMDB: No videos object in response");
+            return string.Empty;
+        }
+
+        if (!movieWithVideos.Videos.Results.Any())
+        {
+            _logger.LogDebug("TMDB: Videos Results is empty");
+            return string.Empty;
+        }
+
+        _logger.LogDebug("TMDB: Found {Count} videos, types: {Types}",
+            movieWithVideos.Videos.Results.Count,
+            string.Join(", ", movieWithVideos.Videos.Results.Select(v => $"{v.Type}@{v.Site}")));
+
+        var trailer = movieWithVideos.Videos.Results
+            .FirstOrDefault(v => v.Type == "Trailer" && v.Site == "YouTube");
+
+        if (trailer == null)
+        {
+            _logger.LogDebug("TMDB: No YouTube trailer found in videos");
+            return string.Empty;
+        }
+
+        return _settings.GetTrailerUrl(trailer.Key);
     }
 
     private async Task<string> GetTrailerUrlAsync(int id, string type)
@@ -645,6 +837,12 @@ public class TMDBMovieService : ITMDBService
 
         [System.Text.Json.Serialization.JsonPropertyName("number_of_seasons")]
         public int NumberOfSeasons { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("release_date")]
+        public string? ReleaseDate { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("first_air_date")]
+        public string? FirstAirDate { get; set; }
     }
 
     private class TMDBGenre
@@ -663,5 +861,42 @@ public class TMDBMovieService : ITMDBService
         public string Key { get; set; } = string.Empty;
         public string Type { get; set; } = string.Empty;
         public string Site { get; set; } = string.Empty;
+    }
+
+    /// <summary>
+    /// DTO para película/serie con videos incluidos (append_to_response=videos)
+    /// </summary>
+    private class TMDBMovieWithVideos
+    {
+        public int Id { get; set; }
+        public string? Title { get; set; }
+        public string? Name { get; set; }
+        public string? Overview { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("poster_path")]
+        public string? PosterPath { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("backdrop_path")]
+        public string? BackdropPath { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("vote_average")]
+        public double VoteAverage { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("genre_ids")]
+        public List<int>? GenreIds { get; set; }
+
+        public List<TMDBGenre>? Genres { get; set; }
+        public int Runtime { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("number_of_seasons")]
+        public int NumberOfSeasons { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("release_date")]
+        public string? ReleaseDate { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("first_air_date")]
+        public string? FirstAirDate { get; set; }
+
+        public TMDBVideosResponse? Videos { get; set; }
     }
 }
