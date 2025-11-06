@@ -1,5 +1,4 @@
-﻿using MongoDB.Bson;
-using MongoDB.Bson.Serialization.Attributes;
+﻿using MongoDB.Bson.Serialization.Attributes;
 using SoftFocusBackend.Shared.Domain.Entities;
 using SoftFocusBackend.Notification.Domain.Model.ValueObjects;
 
@@ -70,6 +69,7 @@ public class Notification : BaseEntity
     
     public void MarkAsRead()
     {
+        Status = DeliveryStatus.Read.ToString(); 
         ReadAt = DateTime.UtcNow;
     }
     
