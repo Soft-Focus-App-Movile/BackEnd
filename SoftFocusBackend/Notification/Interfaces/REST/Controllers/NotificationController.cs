@@ -39,7 +39,7 @@ public class NotificationController : ControllerBase
     public async Task<IActionResult> GetNotifications(
         [FromQuery] string? status = null,
         [FromQuery] string? type = null,
-        [FromQuery] int page = 0,
+        [FromQuery] int page = 1,
         [FromQuery] int size = 20)
     {
         try
@@ -73,7 +73,7 @@ public class NotificationController : ControllerBase
         string userId,
         [FromQuery] string? status = null,
         [FromQuery] string? type = null,
-        [FromQuery] int page = 0,
+        [FromQuery] int page = 1,
         [FromQuery] int size = 20)
     {
         try
