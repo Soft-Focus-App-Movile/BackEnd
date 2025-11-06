@@ -1,4 +1,5 @@
-﻿using MongoDB.Bson.Serialization.Attributes;
+﻿using MongoDB.Bson;
+using MongoDB.Bson.Serialization.Attributes;
 using SoftFocusBackend.Shared.Domain.Entities;
 using SoftFocusBackend.Notification.Domain.Model.ValueObjects;
 
@@ -7,6 +8,7 @@ namespace SoftFocusBackend.Notification.Domain.Model.Aggregates;
 public class Notification : BaseEntity
 {
     [BsonElement("user_id")]
+    [BsonRepresentation(BsonType.ObjectId)]
     public string UserId { get; set; } = string.Empty;
     
     [BsonElement("type")]
