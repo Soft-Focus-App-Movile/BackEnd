@@ -126,7 +126,11 @@ public static class PsychologistResourceAssembler
             AverageRating = psychologist.AverageRating,
             TotalReviews = psychologist.TotalReviews ?? 0,
             AllowsDirectMessages = psychologist.AllowsDirectMessages,
-            TargetAudience = psychologist.TargetAudience
+            TargetAudience = psychologist.TargetAudience,
+            Email = psychologist.Email,
+            Phone = psychologist.Phone,
+            WhatsApp = psychologist.WhatsApp,
+            CorporateEmail = psychologist.CorporateEmail
         };
     }
 

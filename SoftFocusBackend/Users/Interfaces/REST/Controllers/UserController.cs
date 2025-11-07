@@ -4,6 +4,7 @@ using SoftFocusBackend.Users.Application.Internal.CommandServices;
 using SoftFocusBackend.Users.Application.Internal.QueryServices;
 using SoftFocusBackend.Users.Domain.Model.Commands;
 using SoftFocusBackend.Users.Domain.Model.Queries;
+using SoftFocusBackend.Users.Domain.Model.ValueObjects;
 using SoftFocusBackend.Users.Interfaces.REST.Resources;
 using SoftFocusBackend.Users.Interfaces.REST.Transform;
 using System.Security.Claims;
@@ -18,15 +19,18 @@ public class UserController : ControllerBase
 {
     private readonly IUserCommandService _userCommandService;
     private readonly IUserQueryService _userQueryService;
+    private readonly IPsychologistQueryService _psychologistQueryService;
     private readonly ILogger<UserController> _logger;
 
     public UserController(
         IUserCommandService userCommandService,
         IUserQueryService userQueryService,
+        IPsychologistQueryService psychologistQueryService,
         ILogger<UserController> logger)
     {
         _userCommandService = userCommandService ?? throw new ArgumentNullException(nameof(userCommandService));
         _userQueryService = userQueryService ?? throw new ArgumentNullException(nameof(userQueryService));
+        _psychologistQueryService = psychologistQueryService ?? throw new ArgumentNullException(nameof(psychologistQueryService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -161,9 +165,9 @@ public class UserController : ControllerBase
                 return BadRequest(UserResourceAssembler.ToErrorResponse("Failed to delete account"));
             }
 
-            return Ok(new 
-            { 
-                success = true, 
+            return Ok(new
+            {
+                success = true,
                 message = hardDelete ? "Account permanently deleted" : "Account deactivated successfully",
                 timestamp = DateTime.UtcNow
             });
@@ -173,6 +177,115 @@ public class UserController : ControllerBase
             _logger.LogError(ex, "Error deleting user profile");
             return StatusCode(StatusCodes.Status500InternalServerError,
                 UserResourceAssembler.ToErrorResponse("An error occurred while deleting account"));
+        }
+    }
+
+    [HttpGet("psychologists/directory")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetPsychologistsDirectory(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] List<PsychologySpecialty>? specialties = null,
+        [FromQuery] string? city = null,
+        [FromQuery] double? minRating = null,
+        [FromQuery] bool? isAcceptingNewPatients = null,
+        [FromQuery] List<string>? languages = null,
+        [FromQuery] string? searchTerm = null,
+        [FromQuery] string? sortBy = null,
+        [FromQuery] bool sortDescending = false)
+    {
+        try
+        {
+            _logger.LogInformation("Public psychologists directory request - Page: {Page}, Size: {PageSize}",
+                page, pageSize);
+
+            var query = new GetPsychologistsDirectoryQuery(
+                page: page,
+                pageSize: pageSize,
+                specialties: specialties,
+                city: city,
+                minRating: minRating,
+                isAcceptingNewPatients: isAcceptingNewPatients,
+                languages: languages,
+                searchTerm: searchTerm,
+                sortBy: sortBy,
+                sortDescending: sortDescending
+            );
+
+            if (!query.IsValid())
+            {
+                return BadRequest(UserResourceAssembler.ToErrorResponse("Invalid query parameters"));
+            }
+
+            var (psychologists, totalCount) = await _psychologistQueryService.HandleGetPsychologistsDirectoryAsync(query);
+
+            var response = new
+            {
+                psychologists = psychologists.Select(PsychologistResourceAssembler.ToDirectoryResource),
+                pagination = new
+                {
+                    page,
+                    pageSize,
+                    totalCount,
+                    totalPages = (int)Math.Ceiling((double)totalCount / pageSize),
+                    hasNextPage = page * pageSize < totalCount,
+                    hasPreviousPage = page > 1
+                },
+                filters = new
+                {
+                    specialties,
+                    city,
+                    minRating,
+                    isAcceptingNewPatients,
+                    languages,
+                    searchTerm,
+                    sortBy,
+                    sortDescending
+                }
+            };
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting psychologists directory");
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                UserResourceAssembler.ToErrorResponse("An error occurred while retrieving psychologists directory"));
+        }
+    }
+
+    [HttpGet("psychologists/{id}")]
+    [ProducesResponseType(typeof(PsychologistDirectoryResource), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetPsychologistById(string id)
+    {
+        try
+        {
+            _logger.LogInformation("Public psychologist detail request: {PsychologistId}", id);
+
+            var psychologist = await _psychologistQueryService.HandleGetPsychologistByIdAsync(id);
+
+            if (psychologist == null)
+            {
+                _logger.LogWarning("Psychologist not found: {PsychologistId}", id);
+                return NotFound(UserResourceAssembler.ToErrorResponse("Psychologist not found"));
+            }
+
+            if (!psychologist.IsVerified || !psychologist.IsActive || !psychologist.IsProfileVisibleInDirectory)
+            {
+                _logger.LogWarning("Psychologist profile not accessible: {PsychologistId}", id);
+                return NotFound(UserResourceAssembler.ToErrorResponse("Psychologist profile not available"));
+            }
+
+            var response = PsychologistResourceAssembler.ToDirectoryResource(psychologist);
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting psychologist details: {PsychologistId}", id);
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                UserResourceAssembler.ToErrorResponse("An error occurred while retrieving psychologist details"));
         }
     }
 
