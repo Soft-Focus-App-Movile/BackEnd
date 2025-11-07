@@ -91,7 +91,7 @@ public class GoogleOAuthService : IOAuthService
                 { "code", authCode },
                 { "client_id", _settings.ClientId },
                 { "client_secret", _settings.ClientSecret },
-                { "redirect_uri", "postmessage" }, // Empty for Android server auth code flow
+                { "redirect_uri", "" }, // Empty string for Android server auth code flow
                 { "grant_type", "authorization_code" }
             };
 
