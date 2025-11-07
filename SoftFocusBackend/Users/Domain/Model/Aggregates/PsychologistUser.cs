@@ -107,6 +107,12 @@ public class PsychologistUser : User
     [BsonElement("paymentMethods")]
     public string? PaymentMethods { get; set; }
 
+    [BsonElement("whatsApp")]
+    public string? WhatsApp { get; set; }
+
+    [BsonElement("corporateEmail")]
+    public string? CorporateEmail { get; set; }
+
     public void GenerateNewInvitationCode()
     {
         InvitationCode = GenerateRandomCode();

@@ -17,4 +17,8 @@ public record PsychologistDirectoryResource
     public int TotalReviews { get; init; }
     public bool AllowsDirectMessages { get; init; }
     public List<string>? TargetAudience { get; init; }
+    public string? Email { get; init; }
+    public string? Phone { get; init; }
+    public string? WhatsApp { get; init; }
+    public string? CorporateEmail { get; init; }
 }
