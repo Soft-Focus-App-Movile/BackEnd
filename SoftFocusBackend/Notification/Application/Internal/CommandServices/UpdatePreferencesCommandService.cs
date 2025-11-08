@@ -1,4 +1,5 @@
 ﻿using MongoDB.Bson;
+using System.Text.Json;
 using SoftFocusBackend.Notification.Domain.Model.Commands;
 using SoftFocusBackend.Notification.Domain.Model.Aggregates;
 using SoftFocusBackend.Notification.Domain.Repositories;
@@ -33,10 +34,14 @@ public class UpdatePreferencesCommandService
                 UpdatedAt = DateTime.UtcNow
             };
 
-            // Convertir schedule si existe
+            // 🔥 FIX: Convertir schedule si existe
             if (command.Schedule != null)
             {
-                preference.Schedule = ConvertSchedule(command.Schedule);
+                var scheduleSettings = ConvertSchedule(command.Schedule);
+                if (scheduleSettings != null)
+                {
+                    preference.Schedule = scheduleSettings;
+                }
             }
 
             await _preferenceRepository.CreateAsync(preference);
@@ -49,9 +54,19 @@ public class UpdatePreferencesCommandService
             if (!string.IsNullOrEmpty(command.DeliveryMethod))
                 preference.DeliveryMethod = command.DeliveryMethod;
             
+            // 🔥 FIX: Actualizar schedule si existe
             if (command.Schedule != null)
             {
-                preference.Schedule = ConvertSchedule(command.Schedule);
+                var scheduleSettings = ConvertSchedule(command.Schedule);
+                if (scheduleSettings != null)
+                {
+                    preference.Schedule = scheduleSettings;
+                }
+            }
+            else
+            {
+                // Si el schedule es null explícitamente, mantener el existente
+                // Solo eliminarlo si se envía null intencionalmente
             }
 
             preference.UpdatedAt = DateTime.UtcNow;
@@ -64,13 +79,8 @@ public class UpdatePreferencesCommandService
 
     public async Task<IEnumerable<NotificationPreference>> HandleAsync(ResetPreferencesCommand command)
     {
-        // 1. Obtener preferencias actuales
         var currentPreferences = await _preferenceRepository.GetByUserIdAsync(command.UserId);
-        
-        // 2. Crear preferencias por defecto
         var defaultPreferences = CreateDefaultPreferences(command.UserId);
-
-        // 3. Actualizar o crear preferencias
         var resultPreferences = new List<NotificationPreference>();
         
         foreach (var defaultPref in defaultPreferences)
@@ -79,7 +89,6 @@ public class UpdatePreferencesCommandService
             
             if (existing != null)
             {
-                // Actualizar preferencia existente
                 existing.IsEnabled = defaultPref.IsEnabled;
                 existing.DeliveryMethod = defaultPref.DeliveryMethod;
                 existing.UpdatedAt = DateTime.UtcNow;
@@ -88,7 +97,6 @@ public class UpdatePreferencesCommandService
             }
             else
             {
-                // Crear nueva preferencia
                 defaultPref.Id = ObjectId.GenerateNewId().ToString();
                 defaultPref.CreatedAt = DateTime.UtcNow;
                 defaultPref.UpdatedAt = DateTime.UtcNow;
@@ -100,49 +108,102 @@ public class UpdatePreferencesCommandService
         return resultPreferences;
     }
 
-    // Helper: Convertir el schedule del request al formato del dominio
+    // 🔥 FIX: Mejorado para manejar múltiples formatos
     private NotificationPreference.ScheduleSettings? ConvertSchedule(object? scheduleObj)
     {
         if (scheduleObj == null) return null;
 
-        // Si viene como dynamic object del JSON
-        if (scheduleObj is System.Text.Json.JsonElement jsonElement)
+        try
         {
-            try
+            // CASO 1: Ya es un JsonElement
+            if (scheduleObj is JsonElement jsonElement)
             {
-                var startTime = jsonElement.GetProperty("start_time").GetString() ?? "09:00";
-                var endTime = jsonElement.GetProperty("end_time").GetString() ?? "22:00";
-                
-                var daysOfWeek = new List<int>();
-                if (jsonElement.TryGetProperty("days_of_week", out var daysArray))
-                {
-                    foreach (var day in daysArray.EnumerateArray())
-                    {
-                        daysOfWeek.Add(day.GetInt32());
-                    }
-                }
-
-                return new NotificationPreference.ScheduleSettings
-                {
-                    QuietHours = new List<NotificationPreference.ScheduleSettings.QuietHourRange>
-                    {
-                        new NotificationPreference.ScheduleSettings.QuietHourRange
-                        {
-                            StartTime = startTime,
-                            EndTime = endTime
-                        }
-                    },
-                    ActiveDays = ConvertDaysOfWeekToActiveDays(daysOfWeek),
-                    TimeZone = "UTC"
-                };
+                return ParseJsonElement(jsonElement);
             }
-            catch
+
+            // CASO 2: Es un objeto serializado como string JSON
+            if (scheduleObj is string jsonString)
             {
-                return null;
+                var element = JsonSerializer.Deserialize<JsonElement>(jsonString);
+                return ParseJsonElement(element);
+            }
+
+            // CASO 3: Es un Dictionary u otro objeto
+            var json = JsonSerializer.Serialize(scheduleObj);
+            var deserializedElement = JsonSerializer.Deserialize<JsonElement>(json);
+            return ParseJsonElement(deserializedElement);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Error converting schedule: {ex.Message}");
+            Console.WriteLine($"Schedule object type: {scheduleObj.GetType().Name}");
+            Console.WriteLine($"Schedule object value: {JsonSerializer.Serialize(scheduleObj)}");
+            return null;
+        }
+    }
+
+    // 🆕 Helper: Parsear JsonElement a ScheduleSettings
+    private NotificationPreference.ScheduleSettings ParseJsonElement(JsonElement jsonElement)
+    {
+        var startTime = "09:00";
+        var endTime = "22:00";
+        var daysOfWeek = new List<int>();
+
+        // Leer start_time
+        if (jsonElement.TryGetProperty("start_time", out var startProp))
+        {
+            startTime = startProp.GetString() ?? "09:00";
+        }
+        else if (jsonElement.TryGetProperty("StartTime", out var startProp2))
+        {
+            startTime = startProp2.GetString() ?? "09:00";
+        }
+
+        // Leer end_time
+        if (jsonElement.TryGetProperty("end_time", out var endProp))
+        {
+            endTime = endProp.GetString() ?? "22:00";
+        }
+        else if (jsonElement.TryGetProperty("EndTime", out var endProp2))
+        {
+            endTime = endProp2.GetString() ?? "22:00";
+        }
+
+        // Leer days_of_week
+        if (jsonElement.TryGetProperty("days_of_week", out var daysArray))
+        {
+            foreach (var day in daysArray.EnumerateArray())
+            {
+                daysOfWeek.Add(day.GetInt32());
+            }
+        }
+        else if (jsonElement.TryGetProperty("DaysOfWeek", out var daysArray2))
+        {
+            foreach (var day in daysArray2.EnumerateArray())
+            {
+                daysOfWeek.Add(day.GetInt32());
             }
         }
 
-        return null;
+        // Si no hay días especificados, usar todos
+        if (!daysOfWeek.Any())
+        {
+            daysOfWeek = new List<int> { 1, 2, 3, 4, 5, 6, 7 };
+        }
+
+        return new NotificationPreference.ScheduleSettings
+        {
+            QuietHours = new List<NotificationPreference.ScheduleSettings.QuietHourRange>
+            {
+                new NotificationPreference.ScheduleSettings.QuietHourRange
+                {
+                    StartTime = startTime,
+                    EndTime = endTime
+                }
+            },
+            ActiveDays = ConvertDaysOfWeekToActiveDays(daysOfWeek),
+            TimeZone = "UTC"
+        };
     }
 
     // Helper: Convertir days_of_week (int) a active_days (string)
@@ -177,7 +238,20 @@ public class UpdatePreferencesCommandService
                 UserId = userId, 
                 NotificationType = "checkin-reminder",
                 IsEnabled = true,
-                DeliveryMethod = "push"
+                DeliveryMethod = "push",
+                Schedule = new NotificationPreference.ScheduleSettings
+                {
+                    QuietHours = new List<NotificationPreference.ScheduleSettings.QuietHourRange>
+                    {
+                        new NotificationPreference.ScheduleSettings.QuietHourRange
+                        {
+                            StartTime = "09:00",
+                            EndTime = "09:00"
+                        }
+                    },
+                    ActiveDays = new List<string> { "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday" },
+                    TimeZone = "UTC"
+                }
             },
             new NotificationPreference 
             { 
