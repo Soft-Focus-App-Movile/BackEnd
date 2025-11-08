@@ -8,6 +8,8 @@ using SoftFocusBackend.Tracking.Interfaces.REST.Resources;
 using SoftFocusBackend.Tracking.Interfaces.REST.Transform;
 using Swashbuckle.AspNetCore.Annotations;
 using System.Security.Claims;
+using SoftFocusBackend.Library.Application.ACL.Services;
+using SoftFocusBackend.Users.Domain.Model.ValueObjects;
 
 namespace SoftFocusBackend.Tracking.Interfaces.REST.Controllers;
 
@@ -22,19 +24,22 @@ public class TrackingController : ControllerBase
     private readonly IEmotionalCalendarCommandService _emotionalCalendarCommandService;
     private readonly IEmotionalCalendarQueryService _emotionalCalendarQueryService;
     private readonly ILogger<TrackingController> _logger;
+    private readonly IUserIntegrationService _userIntegrationService;
 
     public TrackingController(
         ICheckInCommandService checkInCommandService,
         ICheckInQueryService checkInQueryService,
         IEmotionalCalendarCommandService emotionalCalendarCommandService,
         IEmotionalCalendarQueryService emotionalCalendarQueryService,
-        ILogger<TrackingController> logger)
+        ILogger<TrackingController> logger,
+        IUserIntegrationService userIntegrationService)
     {
         _checkInCommandService = checkInCommandService ?? throw new ArgumentNullException(nameof(checkInCommandService));
         _checkInQueryService = checkInQueryService ?? throw new ArgumentNullException(nameof(checkInQueryService));
         _emotionalCalendarCommandService = emotionalCalendarCommandService ?? throw new ArgumentNullException(nameof(emotionalCalendarCommandService));
         _emotionalCalendarQueryService = emotionalCalendarQueryService ?? throw new ArgumentNullException(nameof(emotionalCalendarQueryService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _userIntegrationService = userIntegrationService ?? throw new ArgumentNullException(nameof(userIntegrationService));
     }
 
     /// <summary>
@@ -465,6 +470,95 @@ public class TrackingController : ControllerBase
             _logger.LogError(ex, "Error getting tracking dashboard");
             return StatusCode(StatusCodes.Status500InternalServerError,
                 TrackingResourceAssembler.ToPaginatedResponse(new List<object>(), 1, 1, 0));
+        }
+    }
+    
+    /// <summary>
+    /// Retrieves comprehensive tracking dashboard for a specific patient
+    /// </summary>
+    /// <param name="userId">The unique identifier of the patient</param>
+    /// <param name="days">Number of days to include in the analysis (default: 30, max: 365)</param>
+    /// <returns>Dashboard data with tracking summary, statistics, and personalized insights for the patient</returns>
+    /// <response code="200">Dashboard data retrieved successfully</response>
+    /// <response code="401">User not authenticated</response>
+    /// <response code="403">User is not a psychologist</response>
+    /// <response code="404">Patient user not found</response>
+    [HttpGet("dashboard/{userId}")]
+    [SwaggerOperation(
+        Summary = "Get patient's tracking dashboard",
+        Description = "Retrieves comprehensive tracking dashboard for a specific patient. Only accessible by authenticated psychologists.",
+        OperationId = "GetPatientTrackingDashboard",
+        Tags = new[] { "Dashboard" }
+    )]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetPatientTrackingDashboard([FromRoute] string userId, [FromQuery] int days = 30)
+    {
+        try
+        {
+            // 1. Validar al usuario que hace la llamada (el psicólogo)
+            var callerId = GetCurrentUserId();
+            if (string.IsNullOrWhiteSpace(callerId))
+            {
+                // CORRECCIÓN: Usar CheckInResourceAssembler
+                return Unauthorized(CheckInResourceAssembler.ToErrorResponse("Invalid user session"));
+            }
+
+            // 2. Verificar que el llamante sea un psicólogo
+            var callerUserType = await _userIntegrationService.GetUserTypeAsync(callerId);
+            if (callerUserType != UserType.Psychologist)
+            {
+                _logger.LogWarning("Forbidden: Non-psychologist user {CallerId} attempted to access dashboard for {UserId}", callerId, userId);
+                return Forbid("Only psychologists can access patient dashboards.");
+            }
+            
+            // 3. Validar que el 'userId' (paciente) exista
+            try
+            {
+                // CORRECCIÓN: Eliminada la comprobación 'UserType.Unknown'.
+                // Simplemente llamamos al servicio. Si no existe, el 'catch' lo manejará.
+                await _userIntegrationService.GetUserTypeAsync(userId);
+            }
+            catch (Exception ex)
+            {
+                // Asumimos que una excepción aquí significa que el usuario no fue encontrado.
+                _logger.LogWarning(ex, "Failed to retrieve patient type for {UserId}, assuming not found.", userId);
+                // CORRECCIÓN: Usar CheckInResourceAssembler
+                return NotFound(CheckInResourceAssembler.ToErrorResponse("Patient not found"));
+            }
+
+            // 4. Reutilizar la lógica del dashboard, pero usando el 'userId' del paciente
+            days = Math.Min(days, 365); // Limitar a 1 año
+            var startDate = DateTime.UtcNow.AddDays(-days);
+            var endDate = DateTime.UtcNow;
+
+            _logger.LogInformation("Get tracking dashboard request for patient: {UserId} by psychologist: {CallerId}, Days: {Days}", userId, callerId, days);
+
+            // Obtener check-ins PARA EL PACIENTE
+            var checkInsQuery = new GetUserCheckInsQuery(userId, startDate, endDate, 1, 1000);
+            var checkIns = await _checkInQueryService.HandleGetUserCheckInsAsync(checkInsQuery);
+
+            // Obtener calendario emocional PARA EL PACIENTE
+            var calendarQuery = new GetEmotionalCalendarByDateRangeQuery(userId, startDate, endDate);
+            var calendarEntries = await _emotionalCalendarQueryService.HandleGetEmotionalCalendarByDateRangeAsync(calendarQuery);
+
+            // Obtener check-in de hoy PARA EL PACIENTE
+            var todayQuery = new GetTodayCheckInQuery(userId);
+            var todayCheckIn = await _checkInQueryService.HandleGetTodayCheckInAsync(todayQuery);
+
+            // Generar el resumen
+            var summary = TrackingResourceAssembler.ToSummaryResource(checkIns, calendarEntries, todayCheckIn);
+            
+            return Ok(TrackingResourceAssembler.ToTrackingDashboard(summary));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting tracking dashboard for patient: {UserId}", userId);
+            // CORRECCIÓN: Usar CheckInResourceAssembler
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                CheckInResourceAssembler.ToErrorResponse("An error occurred while retrieving tracking dashboard"));
         }
     }
 
