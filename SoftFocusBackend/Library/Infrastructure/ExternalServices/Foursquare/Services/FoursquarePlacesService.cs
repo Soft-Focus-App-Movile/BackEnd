@@ -156,15 +156,24 @@ public class FoursquarePlacesService : IFoursquareService
     {
         try
         {
+            // Validar que el lugar tenga información de ubicación válida
+            if (place.Location == null ||
+                !place.Location.Latitude.HasValue ||
+                !place.Location.Longitude.HasValue)
+            {
+                _logger.LogWarning("Lugar sin coordenadas válidas: {PlaceName}", place.Name);
+                return null;
+            }
+
             var externalId = ExternalContentId.CreateFoursquareId(place.FsqPlaceId ?? string.Empty);
 
             // No se solicitan fotos para evitar costos de API
             var metadata = ContentMetadata.CreateForPlace(
                 name: place.Name ?? string.Empty,
                 category: place.Categories?.FirstOrDefault()?.Name ?? "Lugar",
-                address: place.Location?.FormattedAddress ?? place.Location?.Address ?? string.Empty,
-                latitude: place.Latitude ?? 0,
-                longitude: place.Longitude ?? 0,
+                address: place.Location.FormattedAddress ?? place.Location.Address ?? string.Empty,
+                latitude: place.Location.Latitude.Value,
+                longitude: place.Location.Longitude.Value,
                 distance: place.Distance ?? 0,
                 rating: place.Rating ?? 0,
                 photoUrl: string.Empty
@@ -232,12 +241,6 @@ public class FoursquarePlacesService : IFoursquareService
         [System.Text.Json.Serialization.JsonPropertyName("name")]
         public string? Name { get; set; }
 
-        [System.Text.Json.Serialization.JsonPropertyName("latitude")]
-        public double? Latitude { get; set; }
-
-        [System.Text.Json.Serialization.JsonPropertyName("longitude")]
-        public double? Longitude { get; set; }
-
         [System.Text.Json.Serialization.JsonPropertyName("categories")]
         public List<FoursquareCategory>? Categories { get; set; }
 
@@ -262,6 +265,12 @@ public class FoursquarePlacesService : IFoursquareService
 
     private class FoursquareLocation
     {
+        [System.Text.Json.Serialization.JsonPropertyName("latitude")]
+        public double? Latitude { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("longitude")]
+        public double? Longitude { get; set; }
+
         [System.Text.Json.Serialization.JsonPropertyName("address")]
         public string? Address { get; set; }
 
