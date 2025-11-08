@@ -44,43 +44,13 @@ public class NotificationController : ControllerBase
         [FromQuery] string? status = null,
         [FromQuery] string? type = null,
         [FromQuery] int page = 1,
-        [FromQuery] int size = 20,
-        [FromQuery] bool debug = false) // ← NUEVO: Parámetro de debug
+        [FromQuery] int size = 20)
     {
         try
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(userId))
                 return Unauthorized(new { error = "User not authenticated" });
-
-            // 🔍 MODO DEBUG: Ver qué está pasando
-            if (debug)
-            {
-                var collection = _context.GetCollection<BsonDocument>("notifications");
-                var allNotifications = await collection.Find(new BsonDocument()).Limit(10).ToListAsync();
-                
-                var debugInfo = new
-                {
-                    userIdFromToken = userId,
-                    userIdIsValidObjectId = ObjectId.TryParse(userId, out _),
-                    totalNotificationsInDB = allNotifications.Count,
-                    notificationsInDB = allNotifications.Select(n => new
-                    {
-                        id = n.GetValue("_id", BsonNull.Value).ToString(),
-                        userId = n.GetValue("user_id", BsonNull.Value).ToString(),
-                        userIdType = n.GetValue("user_id", BsonNull.Value).BsonType.ToString(),
-                        title = n.GetValue("title", BsonNull.Value).ToString(),
-                        match = n.GetValue("user_id", BsonNull.Value).ToString() == userId
-                    }).ToList()
-                };
-
-                return Ok(new
-                {
-                    message = "🔍 DEBUG MODE ACTIVATED",
-                    debug = debugInfo,
-                    hint = "Check if userIdFromToken matches any userId in notificationsInDB"
-                });
-            }
 
             var query = new GetNotificationHistoryQuery(userId, type, null, null, page, size);
             var notifications = await _historyQueryService.HandleAsync(query) ?? Enumerable.Empty<NotificationAggregate>();
@@ -97,7 +67,7 @@ public class NotificationController : ControllerBase
         }
         catch (Exception ex)
         {
-            return BadRequest(new { error = ex.Message, stackTrace = ex.StackTrace });
+            return BadRequest(new { error = ex.Message });
         }
     }
 
