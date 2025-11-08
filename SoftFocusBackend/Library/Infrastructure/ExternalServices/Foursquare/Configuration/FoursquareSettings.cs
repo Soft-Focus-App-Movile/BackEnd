@@ -31,12 +31,17 @@ public class FoursquareSettings
     public int MaxResults { get; set; } = 10;
 
     /// <summary>
+    /// URL de imagen placeholder para lugares sin foto
+    /// </summary>
+    public string DefaultPlaceholderPhotoUrl { get; set; } = "https://via.placeholder.com/300x300/2D3748/718096?text=Lugar";
+
+    /// <summary>
     /// Construye URL de foto de un lugar
     /// </summary>
     public string GetPhotoUrl(string prefix, string suffix, string size = "300x300")
     {
         if (string.IsNullOrEmpty(prefix) || string.IsNullOrEmpty(suffix))
-            return string.Empty;
+            return DefaultPlaceholderPhotoUrl;
 
         return $"{prefix}{size}{suffix}";
     }

@@ -62,7 +62,7 @@ public class FoursquarePlacesService : IFoursquareService
             var latStr = latitude.ToString("F4", CultureInfo.InvariantCulture);
             var lonStr = longitude.ToString("F4", CultureInfo.InvariantCulture);
 
-            var url = $"{_settings.BaseUrl}/places/search?ll={latStr},{lonStr}&radius={radius}&categories={categoriesParam}&limit={limit}&sort=DISTANCE";
+            var url = $"{_settings.BaseUrl}/places/search?ll={latStr},{lonStr}&radius={radius}&categories={categoriesParam}&limit={limit}&sort=DISTANCE&fields=fsq_id,name,location,categories,distance,rating,photos";
 
             _logger.LogInformation("Foursquare: Searching places with categories: {Categories}", categoriesParam);
             _logger.LogInformation("Foursquare: URL: {Url}", url);
@@ -158,7 +158,8 @@ public class FoursquarePlacesService : IFoursquareService
         {
             var externalId = ExternalContentId.CreateFoursquareId(place.FsqPlaceId ?? string.Empty);
 
-            var photoUrl = string.Empty;
+            // Obtener foto del lugar, o usar placeholder si no hay foto disponible
+            var photoUrl = _settings.DefaultPlaceholderPhotoUrl;
             if (place.Photos != null && place.Photos.Any())
             {
                 var photo = place.Photos.First();
