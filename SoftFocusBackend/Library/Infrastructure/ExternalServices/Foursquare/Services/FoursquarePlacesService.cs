@@ -62,7 +62,7 @@ public class FoursquarePlacesService : IFoursquareService
             var latStr = latitude.ToString("F4", CultureInfo.InvariantCulture);
             var lonStr = longitude.ToString("F4", CultureInfo.InvariantCulture);
 
-            var url = $"{_settings.BaseUrl}/places/search?ll={latStr},{lonStr}&radius={radius}&categories={categoriesParam}&limit={limit}&sort=DISTANCE&fields=fsq_place_id,name,location,categories,distance,rating,photos";
+            var url = $"{_settings.BaseUrl}/places/search?ll={latStr},{lonStr}&radius={radius}&categories={categoriesParam}&limit={limit}&sort=DISTANCE&fields=fsq_place_id,name,location,categories,distance,rating";
 
             _logger.LogInformation("Foursquare: Searching places with categories: {Categories}", categoriesParam);
             _logger.LogInformation("Foursquare: URL: {Url}", url);
@@ -158,14 +158,7 @@ public class FoursquarePlacesService : IFoursquareService
         {
             var externalId = ExternalContentId.CreateFoursquareId(place.FsqPlaceId ?? string.Empty);
 
-            // Obtener foto del lugar, o usar placeholder si no hay foto disponible
-            var photoUrl = _settings.DefaultPlaceholderPhotoUrl;
-            if (place.Photos != null && place.Photos.Any())
-            {
-                var photo = place.Photos.First();
-                photoUrl = _settings.GetPhotoUrl(photo.Prefix ?? string.Empty, photo.Suffix ?? string.Empty);
-            }
-
+            // No se solicitan fotos para evitar costos de API
             var metadata = ContentMetadata.CreateForPlace(
                 name: place.Name ?? string.Empty,
                 category: place.Categories?.FirstOrDefault()?.Name ?? "Lugar",
@@ -174,7 +167,7 @@ public class FoursquarePlacesService : IFoursquareService
                 longitude: place.Longitude ?? 0,
                 distance: place.Distance ?? 0,
                 rating: place.Rating ?? 0,
-                photoUrl: photoUrl
+                photoUrl: string.Empty
             );
 
             var emotionalTags = MapPlaceCategoryToEmotionalTags(
