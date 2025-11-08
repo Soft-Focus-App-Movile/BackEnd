@@ -26,7 +26,7 @@ public class PreferenceController : ControllerBase
         _queryService = queryService;
     }
 
-    // GET: api/v1/preferences - Obtener preferencias
+    // GET: api/v1/preferences - Obtener preferencias del usuario
     [HttpGet]
     public async Task<IActionResult> GetPreferences()
     {
@@ -38,6 +38,14 @@ public class PreferenceController : ControllerBase
 
             var query = new GetPreferencesQuery(userId);
             var preferences = await _queryService.HandleAsync(query);
+            
+            // Si no tiene preferencias, crear las default
+            if (!preferences.Any())
+            {
+                var resetCommand = new ResetPreferencesCommand(userId);
+                preferences = await _updateCommandService.HandleAsync(resetCommand);
+            }
+
             var resources = preferences.Select(NotificationResourceAssembler.ToResource);
 
             return Ok(new PreferenceListResponse 
@@ -51,9 +59,9 @@ public class PreferenceController : ControllerBase
         }
     }
 
-    // PUT: api/v1/preferences - Actualizar preferencias
+    // ✅ PUT: api/v1/preferences - Actualizar MÚLTIPLES preferencias
     [HttpPut]
-    public async Task<IActionResult> UpdatePreferences([FromBody] UpdatePreferenceRequest request)
+    public async Task<IActionResult> UpdatePreferences([FromBody] UpdatePreferencesListRequest request)
     {
         try
         {
@@ -61,26 +69,41 @@ public class PreferenceController : ControllerBase
             if (string.IsNullOrEmpty(userId))
                 return Unauthorized(new { error = "User not authenticated" });
 
-            var command = new UpdatePreferencesCommand(
-                userId,
-                request.NotificationType,
-                request.IsEnabled,
-                request.DeliveryMethod,
-                request.Schedule
-            );
+            if (request.Preferences == null || !request.Preferences.Any())
+                return BadRequest(new { error = "No preferences provided" });
 
-            var preference = await _updateCommandService.HandleAsync(command);
-            var resource = NotificationResourceAssembler.ToResource(preference);
+            // 🔧 Actualizar CADA preferencia en el request
+            foreach (var pref in request.Preferences)
+            {
+                var command = new UpdatePreferencesCommand(
+                    userId,
+                    pref.NotificationType,
+                    pref.IsEnabled,
+                    pref.DeliveryMethod,
+                    pref.Schedule
+                );
 
-            return Ok(resource);
+                await _updateCommandService.HandleAsync(command);
+            }
+
+            // 🎯 Obtener TODAS las preferencias actualizadas del usuario
+            var query = new GetPreferencesQuery(userId);
+            var allPreferences = await _queryService.HandleAsync(query);
+
+            var resources = allPreferences.Select(NotificationResourceAssembler.ToResource);
+
+            return Ok(new PreferenceListResponse 
+            { 
+                Preferences = resources.ToList() 
+            });
         }
         catch (Exception ex)
         {
-            return BadRequest(new { error = ex.Message });
+            return BadRequest(new { error = ex.Message, stackTrace = ex.StackTrace });
         }
     }
 
-    // POST: api/v1/preferences/reset - Restablecer preferencias
+    // POST: api/v1/preferences/reset - Restablecer preferencias a default
     [HttpPost("reset")]
     public async Task<IActionResult> ResetPreferences()
     {
@@ -90,7 +113,6 @@ public class PreferenceController : ControllerBase
             if (string.IsNullOrEmpty(userId))
                 return Unauthorized(new { error = "User not authenticated" });
 
-            // 🆕 USAR EL NUEVO COMMAND PARA RESET
             var resetCommand = new ResetPreferencesCommand(userId);
             var resetPreferences = await _updateCommandService.HandleAsync(resetCommand);
             
