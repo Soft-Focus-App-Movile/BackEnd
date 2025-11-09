@@ -299,9 +299,13 @@ public class TMDBMovieService : ITMDBService
     {
         try
         {
-            var url = $"{_settings.BaseUrl}/movie/popular?api_key={_settings.ApiKey}&language={_settings.Language}&page=1";
+            // Randomize page to get varied results (TMDB has pages 1-500)
+            var random = new Random();
+            var page = random.Next(1, 6); // Pages 1-5 to ensure good quality content
 
-            _logger.LogInformation("TMDB: Getting popular movies");
+            var url = $"{_settings.BaseUrl}/movie/popular?api_key={_settings.ApiKey}&language={_settings.Language}&page={page}";
+
+            _logger.LogInformation("TMDB: Getting popular movies from page {Page}", page);
 
             var response = await _httpClient.GetAsync(url);
 
@@ -361,9 +365,13 @@ public class TMDBMovieService : ITMDBService
     {
         try
         {
-            var url = $"{_settings.BaseUrl}/movie/top_rated?api_key={_settings.ApiKey}&language={_settings.Language}&page=1";
+            // Randomize page to get varied results
+            var random = new Random();
+            var page = random.Next(1, 6); // Pages 1-5
 
-            _logger.LogInformation("TMDB: Getting top rated movies");
+            var url = $"{_settings.BaseUrl}/movie/top_rated?api_key={_settings.ApiKey}&language={_settings.Language}&page={page}";
+
+            _logger.LogInformation("TMDB: Getting top rated movies from page {Page}", page);
 
             var response = await _httpClient.GetAsync(url);
 
@@ -423,9 +431,13 @@ public class TMDBMovieService : ITMDBService
     {
         try
         {
-            var url = $"{_settings.BaseUrl}/movie/now_playing?api_key={_settings.ApiKey}&language={_settings.Language}&page=1";
+            // Randomize page to get varied results
+            var random = new Random();
+            var page = random.Next(1, 4); // Pages 1-3 for now playing
 
-            _logger.LogInformation("TMDB: Getting now playing movies");
+            var url = $"{_settings.BaseUrl}/movie/now_playing?api_key={_settings.ApiKey}&language={_settings.Language}&page={page}";
+
+            _logger.LogInformation("TMDB: Getting now playing movies from page {Page}", page);
 
             var response = await _httpClient.GetAsync(url);
 
@@ -485,10 +497,14 @@ public class TMDBMovieService : ITMDBService
     {
         try
         {
-            var genreParam = string.Join(",", genreIds);
-            var url = $"{_settings.BaseUrl}/discover/movie?api_key={_settings.ApiKey}&language={_settings.Language}&with_genres={genreParam}&sort_by=popularity.desc&page=1";
+            // Randomize page to get varied results
+            var random = new Random();
+            var page = random.Next(1, 6); // Pages 1-5
 
-            _logger.LogInformation("TMDB: Discovering movies with genres: {Genres}", genreParam);
+            var genreParam = string.Join(",", genreIds);
+            var url = $"{_settings.BaseUrl}/discover/movie?api_key={_settings.ApiKey}&language={_settings.Language}&with_genres={genreParam}&sort_by=popularity.desc&page={page}";
+
+            _logger.LogInformation("TMDB: Discovering movies with genres: {Genres} from page {Page}", genreParam, page);
 
             var response = await _httpClient.GetAsync(url);
 

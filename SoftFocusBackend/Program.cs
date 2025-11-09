@@ -340,6 +340,7 @@ builder.Services.AddScoped<SoftFocusBackend.Therapy.Domain.Repositories.IChatMes
 
 // Therapy - Application Services
 builder.Services.AddScoped<SoftFocusBackend.Therapy.Application.Internal.CommandServices.EstablishConnectionCommandService>();
+builder.Services.AddScoped<SoftFocusBackend.Therapy.Application.Internal.CommandServices.TerminateRelationshipCommandService>();
 builder.Services.AddScoped<SoftFocusBackend.Therapy.Application.Internal.CommandServices.SendChatMessageCommandService>();
 builder.Services.AddScoped<SoftFocusBackend.Therapy.Application.Internal.QueryServices.ChatHistoryQueryService>();
 builder.Services.AddScoped<SoftFocusBackend.Therapy.Application.Internal.QueryServices.PatientDirectoryQueryService>();

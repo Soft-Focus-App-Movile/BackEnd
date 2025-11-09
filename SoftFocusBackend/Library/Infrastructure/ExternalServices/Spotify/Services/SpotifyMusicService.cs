@@ -38,8 +38,13 @@ public class SpotifyMusicService : ISpotifyService
         {
             await EnsureValidTokenAsync();
 
-            var url = $"{_settings.BaseUrl}/search?q={Uri.EscapeDataString(query)}&type=track&market=PE&limit={limit}";
+            // Add random offset to get varied results (Spotify allows offset up to 1000)
+            var random = new Random();
+            var offset = random.Next(0, 50); // Offset 0-49 to get variety while maintaining quality
 
+            var url = $"{_settings.BaseUrl}/search?q={Uri.EscapeDataString(query)}&type=track&market=PE&limit={limit}&offset={offset}";
+
+            _logger.LogInformation("Spotify: Searching with query '{Query}', offset {Offset}", query, offset);
             _logger.LogInformation("Spotify: Using access token: {Token}",
                 string.IsNullOrEmpty(_accessToken) ? "NULL" : $"{_accessToken[..10]}...");
 
@@ -131,14 +136,22 @@ public class SpotifyMusicService : ISpotifyService
         {
             await EnsureValidTokenAsync();
 
-            var queries = new[] { "top hits 2024", "trending music", "viral songs", "popular latin" };
+            var queries = new[] { "top hits 2024", "trending music", "viral songs", "popular latin", "top 50", "billboard" };
+
+            // Randomize which queries to use
+            var random = new Random();
+            var shuffledQueries = queries.OrderBy(x => random.Next()).ToArray();
             var allTracks = new List<ContentItem>();
 
-            foreach (var query in queries)
+            foreach (var query in shuffledQueries)
             {
                 if (allTracks.Count >= limit) break;
 
-                var url = $"{_settings.BaseUrl}/search?q={Uri.EscapeDataString(query)}&type=track&market=PE&limit={Math.Min(10, limit - allTracks.Count)}";
+                // Add random offset for variety
+                var offset = random.Next(0, 30);
+                var url = $"{_settings.BaseUrl}/search?q={Uri.EscapeDataString(query)}&type=track&market=PE&limit={Math.Min(10, limit - allTracks.Count)}&offset={offset}";
+
+                _logger.LogInformation("Spotify: Getting popular tracks with query '{Query}', offset {Offset}", query, offset);
 
                 var request = new HttpRequestMessage(HttpMethod.Get, url);
                 request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);
