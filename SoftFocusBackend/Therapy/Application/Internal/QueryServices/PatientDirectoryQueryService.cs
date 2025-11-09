@@ -2,45 +2,36 @@
 using SoftFocusBackend.Therapy.Domain.Model.Queries;
 using SoftFocusBackend.Therapy.Domain.Repositories;
 using SoftFocusBackend.Therapy.Domain.Model.ValueObjects;
-using SoftFocusBackend.Therapy.Application.Internal.OutboundServices;
-using SoftFocusBackend.Users.Domain.Model.Aggregates;
 
 namespace SoftFocusBackend.Therapy.Application.Internal.QueryServices
 {
     public class PatientDirectoryQueryService
     {
         private readonly ITherapeuticRelationshipRepository _relationshipRepository;
-        private readonly IPatientFacade _patientFacade; // <-- NUEVA INYECCIÓN
 
-        public PatientDirectoryQueryService(
-            ITherapeuticRelationshipRepository relationshipRepository, 
-            IPatientFacade patientFacade // <-- NUEVA INYECCIÓN
-            )
+        public PatientDirectoryQueryService(ITherapeuticRelationshipRepository relationshipRepository)
         {
             _relationshipRepository = relationshipRepository;
-            _patientFacade = patientFacade; // <-- NUEVA INYECCIÓN
         }
 
         public async Task<IEnumerable<PatientDirectory>> Handle(GetPatientDirectoryQuery query)
         {
-            // 1. Obtener todas las relaciones del psicólogo (como antes)
             var relationships = await _relationshipRepository.GetByPsychologistIdAsync(query.PsychologistId);
 
             var directories = new List<PatientDirectory>();
             foreach (var rel in relationships)
             {
-                // 2. Aplicar filtros (como antes)
                 if (query.StatusFilter.HasValue && rel.Status != query.StatusFilter.Value) continue;
 
-                // 3. (NUEVO) Obtener los datos del paciente (User) usando el Facade
-                var patientUser = await _patientFacade.FetchPatientById(rel.PatientId);
-
-                // Si el usuario no se encuentra (por alguna razón), saltamos este registro
-                if (patientUser == null) continue; 
-
-                // 4. (MODIFICADO) Crear el PatientDirectory usando el nuevo constructor
-                // que combina los datos de la relación y del usuario.
-                directories.Add(new PatientDirectory(rel, patientUser));
+                directories.Add(new PatientDirectory
+                {
+                    Id = rel.Id,
+                    PsychologistId = rel.PsychologistId,
+                    PatientId = rel.PatientId,
+                    Status = rel.Status,
+                    StartDate = rel.StartDate,
+                    SessionCount = rel.SessionCount
+                });
             }
 
             return directories;
