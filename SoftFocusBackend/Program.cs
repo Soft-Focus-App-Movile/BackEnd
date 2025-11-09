@@ -344,6 +344,7 @@ builder.Services.AddScoped<SoftFocusBackend.Therapy.Application.Internal.Command
 builder.Services.AddScoped<SoftFocusBackend.Therapy.Application.Internal.CommandServices.SendChatMessageCommandService>();
 builder.Services.AddScoped<SoftFocusBackend.Therapy.Application.Internal.QueryServices.ChatHistoryQueryService>();
 builder.Services.AddScoped<SoftFocusBackend.Therapy.Application.Internal.QueryServices.PatientDirectoryQueryService>();
+builder.Services.AddScoped<SoftFocusBackend.Therapy.Application.Internal.OutboundServices.IPatientFacade, SoftFocusBackend.Therapy.Infrastructure.ACL.Services.PatientFacade>();
 
 // Add services to the container
 builder.Services.AddSignalR(); // Add SignalR services
