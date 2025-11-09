@@ -35,9 +35,10 @@ namespace SoftFocusBackend.Therapy.Infrastructure.Persistence.MongoDB.Repositori
             return await Collection.Find(x => x.PatientId == patientId).ToListAsync();
         }
 
-        public Task UpdateAsync(TherapeuticRelationship relationship)
+        public async Task UpdateAsync(TherapeuticRelationship relationship)
         {
-            throw new NotImplementedException();
+            var filter = Builders<TherapeuticRelationship>.Filter.Eq(r => r.Id, relationship.Id);
+            await Collection.ReplaceOneAsync(filter, relationship);
         }
 
         private void CreateIndexes()
@@ -48,9 +49,23 @@ namespace SoftFocusBackend.Therapy.Infrastructure.Persistence.MongoDB.Repositori
                     .Ascending(x => x.Status)
             ));
 
+            // Index for ConnectionCode without unique constraint to allow multiple patients per psychologist
             Collection.Indexes.CreateOne(new CreateIndexModel<TherapeuticRelationship>(
-                Builders<TherapeuticRelationship>.IndexKeys.Ascending(x => x.ConnectionCode.Value),
-                new CreateIndexOptions { Unique = true }
+                Builders<TherapeuticRelationship>.IndexKeys.Ascending(x => x.ConnectionCode.Value)
+            ));
+
+            // Ensure a patient can only have one active relationship
+            var indexOptions = new CreateIndexOptions<TherapeuticRelationship>
+            {
+                Unique = true,
+                PartialFilterExpression = Builders<TherapeuticRelationship>.Filter.Eq(x => x.IsActive, true)
+            };
+
+            Collection.Indexes.CreateOne(new CreateIndexModel<TherapeuticRelationship>(
+                Builders<TherapeuticRelationship>.IndexKeys
+                    .Ascending(x => x.PatientId)
+                    .Ascending(x => x.IsActive),
+                indexOptions
             ));
         }
     }

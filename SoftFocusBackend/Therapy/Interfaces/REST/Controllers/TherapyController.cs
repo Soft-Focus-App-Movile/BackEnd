@@ -15,13 +15,16 @@ namespace SoftFocusBackend.Therapy.Interfaces.REST.Controllers
     public class TherapyController : ControllerBase
     {
         private readonly EstablishConnectionCommandService _establishService;
+        private readonly TerminateRelationshipCommandService _terminateService;
         private readonly PatientDirectoryQueryService _directoryService;
 
         public TherapyController(
             EstablishConnectionCommandService establishService,
+            TerminateRelationshipCommandService terminateService,
             PatientDirectoryQueryService directoryService)
         {
             _establishService = establishService;
+            _terminateService = terminateService;
             _directoryService = directoryService;
         }
 
@@ -59,6 +62,32 @@ namespace SoftFocusBackend.Therapy.Interfaces.REST.Controllers
                 return Ok(new { hasRelationship = false, relationship = (object)null });
 
             return Ok(new { hasRelationship = true, relationship });
+        }
+
+        [HttpDelete("disconnect/{relationshipId}")]
+        public async Task<IActionResult> TerminateRelationship(string relationshipId)
+        {
+            var userId = GetCurrentUserId();
+
+            var command = new TerminateRelationshipCommand
+            {
+                UserId = userId,
+                RelationshipId = relationshipId
+            };
+
+            try
+            {
+                await _terminateService.Handle(command);
+                return Ok(new { message = "Relationship terminated successfully" });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return NotFound(new { error = ex.Message });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Forbid(ex.Message);
+            }
         }
 
         private string GetCurrentUserId()

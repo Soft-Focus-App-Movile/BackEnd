@@ -127,7 +127,9 @@ public class CachePopulationService : ICachePopulationService
             }
             else
             {
-                var criteriaIndex = DateTime.UtcNow.DayOfYear % 3;
+                // Randomize criteria based on current timestamp to get varied results
+                var random = new Random(DateTime.UtcNow.Millisecond);
+                var criteriaIndex = random.Next(0, 3);
 
                 results = criteriaIndex switch
                 {
@@ -139,7 +141,10 @@ public class CachePopulationService : ICachePopulationService
 
             var safeContent = FilterMentalHealthSafeContent(results);
 
-            return safeContent.Take(limit).ToList();
+            // Shuffle results to provide variety
+            var shuffled = safeContent.OrderBy(x => Guid.NewGuid()).ToList();
+
+            return shuffled.Take(limit).ToList();
         }
         catch (Exception ex)
         {
@@ -155,17 +160,19 @@ public class CachePopulationService : ICachePopulationService
     {
         try
         {
-            var results = await _tmdbService.SearchSeriesAsync(query, limit);
+            var results = await _tmdbService.SearchSeriesAsync(query, limit * 2);
 
             if (emotionFilter.HasValue)
             {
                 results = results
                     .Where(s => s.EmotionalTags.Contains(emotionFilter.Value))
-                    .Take(limit)
                     .ToList();
             }
 
-            return results;
+            // Shuffle results to provide variety
+            var shuffled = results.OrderBy(x => Guid.NewGuid()).Take(limit).ToList();
+
+            return shuffled;
         }
         catch (Exception ex)
         {
@@ -187,14 +194,17 @@ public class CachePopulationService : ICachePopulationService
             {
                 var emotionQuery = GetSpotifyQueryForEmotion(emotionFilter.Value);
                 var combinedQuery = $"{query} {emotionQuery}";
-                results = await _spotifyService.SearchTracksAsync(combinedQuery, limit);
+                results = await _spotifyService.SearchTracksAsync(combinedQuery, limit * 2);
             }
             else
             {
-                results = await _spotifyService.GetPopularTracksAsync(limit);
+                results = await _spotifyService.GetPopularTracksAsync(limit * 2);
             }
 
-            return results;
+            // Shuffle results to provide variety
+            var shuffled = results.OrderBy(x => Guid.NewGuid()).Take(limit).ToList();
+
+            return shuffled;
         }
         catch (Exception ex)
         {
@@ -216,14 +226,17 @@ public class CachePopulationService : ICachePopulationService
             {
                 var emotionQuery = GetYouTubeQueryForEmotion(emotionFilter.Value);
                 var combinedQuery = $"{query} {emotionQuery}";
-                results = await _youtubeService.SearchVideosAsync(combinedQuery, limit);
+                results = await _youtubeService.SearchVideosAsync(combinedQuery, limit * 2);
             }
             else
             {
-                results = await _youtubeService.SearchVideosAsync(query, limit);
+                results = await _youtubeService.SearchVideosAsync(query, limit * 2);
             }
 
-            return results;
+            // Shuffle results to provide variety
+            var shuffled = results.OrderBy(x => Guid.NewGuid()).Take(limit).ToList();
+
+            return shuffled;
         }
         catch (Exception ex)
         {

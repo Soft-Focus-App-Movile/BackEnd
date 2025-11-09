@@ -30,7 +30,17 @@ public class YouTubeVideoService : IYouTubeService
     {
         try
         {
-            var url = $"{_settings.BaseUrl}/search?part=snippet&q={Uri.EscapeDataString(query)}&type=video&maxResults={limit}&key={_settings.ApiKey}&relevanceLanguage=es&videoDuration={_settings.VideoDuration}";
+            // Randomize order to get varied results
+            var random = new Random();
+            var orders = new[] { "relevance", "date", "rating", "viewCount" };
+            var selectedOrder = orders[random.Next(orders.Length)];
+
+            // Request more results to have variety after filtering
+            var requestLimit = Math.Min(limit * 2, 50); // YouTube max is 50
+
+            var url = $"{_settings.BaseUrl}/search?part=snippet&q={Uri.EscapeDataString(query)}&type=video&maxResults={requestLimit}&order={selectedOrder}&key={_settings.ApiKey}&relevanceLanguage=es&videoDuration={_settings.VideoDuration}";
+
+            _logger.LogInformation("YouTube: Searching with query '{Query}', order: {Order}", query, selectedOrder);
 
             var response = await _httpClient.GetAsync(url);
 
