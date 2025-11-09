@@ -11,6 +11,7 @@ using System.Security.Claims;
 using SoftFocusBackend.Users.Domain.Services;
 using SoftFocusBackend.Shared.Infrastructure.ExternalServices.Cloudinary.Configuration;
 using SoftFocusBackend.Shared.Infrastructure.ExternalServices.Cloudinary.Services;
+using SoftFocusBackend.Users.Application.Internal.OutboundServices;
 
 namespace SoftFocusBackend.Users.Interfaces.REST.Controllers;
 
@@ -25,19 +26,22 @@ public class PsychologistController : ControllerBase
     private readonly ICloudinaryImageService _cloudinaryImageService;
     private readonly CloudinarySettings _cloudinarySettings;
     private readonly ILogger<PsychologistController> _logger;
+    private readonly IUserFacade _userFacade;
 
     public PsychologistController(
         IPsychologistCommandService psychologistCommandService,
         IPsychologistQueryService psychologistQueryService,
         ICloudinaryImageService cloudinaryImageService,
         IOptions<CloudinarySettings> cloudinarySettings,
-        ILogger<PsychologistController> logger)
+        ILogger<PsychologistController> logger,
+        IUserFacade userFacade)
     {
         _psychologistCommandService = psychologistCommandService ?? throw new ArgumentNullException(nameof(psychologistCommandService));
         _psychologistQueryService = psychologistQueryService ?? throw new ArgumentNullException(nameof(psychologistQueryService));
         _cloudinaryImageService = cloudinaryImageService ?? throw new ArgumentNullException(nameof(cloudinaryImageService));
         _cloudinarySettings = cloudinarySettings.Value;
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _userFacade = userFacade ?? throw new ArgumentNullException(nameof(userFacade));
     }
 
     [HttpGet("verification")]
@@ -424,6 +428,42 @@ public class PsychologistController : ControllerBase
             _logger.LogError(ex, "Error getting psychologist stats");
             return StatusCode(StatusCodes.Status500InternalServerError,
                 PsychologistResourceAssembler.ToErrorResponse("An error occurred while retrieving stats"));
+        }
+    }
+
+    [HttpGet("patient/{id}")]
+    [Authorize(Roles = "Psychologist")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GetPatientProfile(string id)
+    {
+        try
+        {
+            var psychologistId = GetCurrentUserId();
+            if (string.IsNullOrWhiteSpace(psychologistId))
+            {
+                return Unauthorized(PsychologistResourceAssembler.ToErrorResponse("Invalid user session"));
+            }
+
+            _logger.LogInformation("Psychologist {PsychologistId} requesting patient profile: {PatientId}", psychologistId, id);
+
+            var patient = await _userFacade.GetUserByIdAsync(id);
+            if (patient == null)
+            {
+                return NotFound(PsychologistResourceAssembler.ToErrorResponse("Patient not found"));
+            }
+
+            var response = UserResourceAssembler.ToProfileResource(patient);
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting patient profile: {PatientId}", id);
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                PsychologistResourceAssembler.ToErrorResponse("An error occurred while retrieving patient profile"));
         }
     }
 
