@@ -40,5 +40,9 @@ public interface ITMDBService
     /// </summary>
     Task<List<ContentItem>> GetPopularMoviesAsync(int limit = 20);
 
+    Task<List<ContentItem>> GetTopRatedMoviesAsync(int limit = 20);
+
+    Task<List<ContentItem>> GetNowPlayingMoviesAsync(int limit = 20);
+
     Task<List<ContentItem>> GetMoviesByGenresAsync(List<int> genreIds, int limit = 20);
 }

@@ -26,21 +26,14 @@ public class RecommendationQueryService : IRecommendationQueryService
         _logger = logger;
     }
 
-    public async Task<(WeatherCondition Weather, List<ContentItem> Places)> GetRecommendedPlacesAsync(
+    public async Task<WeatherCondition> GetRecommendedPlacesAsync(
         GetRecommendedPlacesQuery query)
     {
         query.Validate();
 
         var weather = await _placeRecommender.GetCurrentWeatherAsync(query.Latitude, query.Longitude);
-        var places = await _placeRecommender.RecommendPlacesAsync(
-            query.Latitude,
-            query.Longitude,
-            query.Emotion,
-            query.Radius,
-            query.Limit
-        );
 
-        return (weather, places);
+        return weather;
     }
 
     public async Task<List<ContentItem>> GetRecommendedContentAsync(GetRecommendedContentQuery query)

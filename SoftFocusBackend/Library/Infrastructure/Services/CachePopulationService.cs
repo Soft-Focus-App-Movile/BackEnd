@@ -19,6 +19,11 @@ public class CachePopulationService : ICachePopulationService
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<CachePopulationService> _logger;
 
+    private static readonly int[] RestrictedGenresForMentalHealth = new[]
+    {
+        27, 53, 80, 10752, 9648
+    };
+
     private static readonly Dictionary<EmotionalTag, int[]> EmotionToMovieGenres = new()
     {
         { EmotionalTag.Happy, new[] { 35, 10751, 10749 } },
@@ -113,19 +118,28 @@ public class CachePopulationService : ICachePopulationService
     {
         try
         {
-            List<ContentItem> results;
+            List<ContentItem> results = new();
 
             if (emotionFilter.HasValue)
             {
                 var genreIds = GetMovieGenresForEmotion(emotionFilter.Value);
-                results = await _tmdbService.GetMoviesByGenresAsync(genreIds, limit);
+                results = await _tmdbService.GetMoviesByGenresAsync(genreIds, limit * 2);
             }
             else
             {
-                results = await _tmdbService.GetPopularMoviesAsync(limit);
+                var criteriaIndex = DateTime.UtcNow.DayOfYear % 3;
+
+                results = criteriaIndex switch
+                {
+                    0 => await _tmdbService.GetPopularMoviesAsync(limit * 2),
+                    1 => await _tmdbService.GetTopRatedMoviesAsync(limit * 2),
+                    _ => await _tmdbService.GetNowPlayingMoviesAsync(limit * 2)
+                };
             }
 
-            return results;
+            var safeContent = FilterMentalHealthSafeContent(results);
+
+            return safeContent.Take(limit).ToList();
         }
         catch (Exception ex)
         {
@@ -292,5 +306,30 @@ public class CachePopulationService : ICachePopulationService
         return EmotionToYouTubeQuery.ContainsKey(emotion)
             ? EmotionToYouTubeQuery[emotion]
             : "meditación bienestar";
+    }
+
+    private List<ContentItem> FilterMentalHealthSafeContent(List<ContentItem> items)
+    {
+        return items.Where(item =>
+        {
+            if (item.ContentType != ContentType.Movie && item.ContentType != ContentType.Series)
+            {
+                return true;
+            }
+
+            var genresString = string.Join(",", item.Metadata.Genres ?? new List<string>());
+            var hasRestrictedGenre = RestrictedGenresForMentalHealth.Any(restrictedId =>
+                genresString.Contains(restrictedId.ToString()));
+
+            if (hasRestrictedGenre)
+            {
+                _logger.LogDebug(
+                    "Filtered out content '{Title}' due to restricted genre for mental health",
+                    item.Metadata.Title);
+                return false;
+            }
+
+            return true;
+        }).ToList();
     }
 }
