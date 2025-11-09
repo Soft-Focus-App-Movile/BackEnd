@@ -357,6 +357,130 @@ public class TMDBMovieService : ITMDBService
         }
     }
 
+    public async Task<List<ContentItem>> GetTopRatedMoviesAsync(int limit = 20)
+    {
+        try
+        {
+            var url = $"{_settings.BaseUrl}/movie/top_rated?api_key={_settings.ApiKey}&language={_settings.Language}&page=1";
+
+            _logger.LogInformation("TMDB: Getting top rated movies");
+
+            var response = await _httpClient.GetAsync(url);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("TMDB API error: {StatusCode}", response.StatusCode);
+                return new List<ContentItem>();
+            }
+
+            var content = await response.Content.ReadAsStringAsync();
+            var result = JsonSerializer.Deserialize<TMDBSearchResponse>(content, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+
+            if (result?.Results == null)
+            {
+                _logger.LogWarning("TMDB: Deserialization returned null results");
+                return new List<ContentItem>();
+            }
+
+            _logger.LogInformation("TMDB: Received {Count} top rated movies", result.Results.Count);
+
+            var movies = new List<ContentItem>();
+            var count = 0;
+
+            foreach (var movie in result.Results)
+            {
+                if (count >= limit) break;
+
+                try
+                {
+                    var contentItem = await ConvertMovieToContentItemAsync(movie);
+                    if (contentItem != null)
+                    {
+                        movies.Add(contentItem);
+                        count++;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "TMDB: Failed to convert movie {MovieId}: {Title}", movie.Id, movie.Title);
+                }
+            }
+
+            _logger.LogInformation("TMDB: Returning {Count} top rated movies", movies.Count);
+            return movies;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting top rated movies from TMDB");
+            return new List<ContentItem>();
+        }
+    }
+
+    public async Task<List<ContentItem>> GetNowPlayingMoviesAsync(int limit = 20)
+    {
+        try
+        {
+            var url = $"{_settings.BaseUrl}/movie/now_playing?api_key={_settings.ApiKey}&language={_settings.Language}&page=1";
+
+            _logger.LogInformation("TMDB: Getting now playing movies");
+
+            var response = await _httpClient.GetAsync(url);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("TMDB API error: {StatusCode}", response.StatusCode);
+                return new List<ContentItem>();
+            }
+
+            var content = await response.Content.ReadAsStringAsync();
+            var result = JsonSerializer.Deserialize<TMDBSearchResponse>(content, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+
+            if (result?.Results == null)
+            {
+                _logger.LogWarning("TMDB: Deserialization returned null results");
+                return new List<ContentItem>();
+            }
+
+            _logger.LogInformation("TMDB: Received {Count} now playing movies", result.Results.Count);
+
+            var movies = new List<ContentItem>();
+            var count = 0;
+
+            foreach (var movie in result.Results)
+            {
+                if (count >= limit) break;
+
+                try
+                {
+                    var contentItem = await ConvertMovieToContentItemAsync(movie);
+                    if (contentItem != null)
+                    {
+                        movies.Add(contentItem);
+                        count++;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "TMDB: Failed to convert movie {MovieId}: {Title}", movie.Id, movie.Title);
+                }
+            }
+
+            _logger.LogInformation("TMDB: Returning {Count} now playing movies", movies.Count);
+            return movies;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting now playing movies from TMDB");
+            return new List<ContentItem>();
+        }
+    }
+
     public async Task<List<ContentItem>> GetMoviesByGenresAsync(List<int> genreIds, int limit = 20)
     {
         try

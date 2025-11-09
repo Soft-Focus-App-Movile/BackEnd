@@ -21,7 +21,7 @@ public class RecommendationsController : ControllerBase
     }
 
     /// <summary>
-    /// Obtiene recomendaciones de lugares basadas en el clima actual
+    /// Obtiene información del clima actual
     /// </summary>
     [HttpGet("places")]
     [ProducesResponseType(typeof(object), 200)]
@@ -39,9 +39,6 @@ public class RecommendationsController : ControllerBase
         if (longitude < -180 || longitude > 180)
             return BadRequest("Longitude must be between -180 and 180");
 
-        if (limit < 1 || limit > 50)
-            return BadRequest("Limit must be between 1 and 50");
-
         EmotionalTag? emotionTag = null;
         if (!string.IsNullOrEmpty(emotionFilter))
         {
@@ -54,7 +51,7 @@ public class RecommendationsController : ControllerBase
 
         try
         {
-            var (weather, places) = await _recommendationQuery.GetRecommendedPlacesAsync(query);
+            var weather = await _recommendationQuery.GetRecommendedPlacesAsync(query);
 
             var response = new
             {
@@ -66,8 +63,8 @@ public class RecommendationsController : ControllerBase
                     humidity = weather.Humidity,
                     cityName = weather.CityName
                 },
-                places = places.Select(MapToContentResponse).ToList(),
-                totalPlaces = places.Count,
+                places = new List<object>(),
+                totalPlaces = 0,
                 location = new
                 {
                     latitude,

@@ -237,6 +237,19 @@ builder.Services.AddScoped<ICrisisIntegrationService, CrisisIntegrationService>(
 builder.Services.AddScoped<ISubscriptionIntegrationService, SubscriptionIntegrationService>();
 
 // ============================================
+// CRISIS BOUNDED CONTEXT
+// ============================================
+
+builder.Services.AddScoped<SoftFocusBackend.Crisis.Domain.Repositories.ICrisisAlertRepository, SoftFocusBackend.Crisis.Infrastructure.Persistence.CrisisAlertRepository>();
+
+builder.Services.AddScoped<SoftFocusBackend.Crisis.Domain.Services.ICrisisNotificationService, SoftFocusBackend.Crisis.Infrastructure.Services.CrisisNotificationService>();
+
+builder.Services.AddScoped<SoftFocusBackend.Crisis.Application.Internal.CommandServices.ICrisisAlertCommandService, SoftFocusBackend.Crisis.Application.Internal.CommandServices.CrisisAlertCommandService>();
+builder.Services.AddScoped<SoftFocusBackend.Crisis.Application.Internal.QueryServices.ICrisisAlertQueryService, SoftFocusBackend.Crisis.Application.Internal.QueryServices.CrisisAlertQueryService>();
+
+builder.Services.AddScoped<SoftFocusBackend.Crisis.Application.ACL.ICrisisIntegrationService, SoftFocusBackend.Crisis.Application.ACL.CrisisIntegrationService>();
+
+// ============================================
 // LIBRARY BOUNDED CONTEXT
 // ============================================
 
@@ -522,8 +535,8 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-// Map the ChatHub endpoint
 app.MapHub<ChatHub>("/chatHub");
+app.MapHub<SoftFocusBackend.Crisis.Interfaces.Hubs.CrisisHub>("/crisisHub");
 
 app.Run();
 
