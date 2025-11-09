@@ -18,15 +18,18 @@ public class CrisisAlertController : ControllerBase
     private readonly ICrisisAlertCommandService _commandService;
     private readonly ICrisisAlertQueryService _queryService;
     private readonly ILogger<CrisisAlertController> _logger;
+    private readonly CrisisAlertResourceFromEntityAssembler _assembler;
 
     public CrisisAlertController(
         ICrisisAlertCommandService commandService,
         ICrisisAlertQueryService queryService,
-        ILogger<CrisisAlertController> logger)
+        ILogger<CrisisAlertController> logger,
+        CrisisAlertResourceFromEntityAssembler assembler)
     {
         _commandService = commandService;
         _queryService = queryService;
         _logger = logger;
+        _assembler = assembler;
     }
 
     [HttpPost("alert")]
@@ -48,7 +51,7 @@ public class CrisisAlertController : ControllerBase
             var command = CreateCrisisAlertCommandFromResourceAssembler.ToCommandFromResource(resource, userId);
             var alert = await _commandService.Handle(command);
 
-            var responseResource = CrisisAlertResourceFromEntityAssembler.ToResourceFromEntity(alert);
+            var responseResource = await _assembler.ToResourceFromEntity(alert);
 
             return CreatedAtAction(nameof(GetAlertById), new { id = alert.Id }, responseResource);
         }
@@ -95,7 +98,7 @@ public class CrisisAlertController : ControllerBase
             var query = new GetPsychologistAlertsQuery(psychologistId, severityEnum, statusEnum, limit);
             var alerts = await _queryService.Handle(query);
 
-            var resources = CrisisAlertResourceFromEntityAssembler.ToResourceFromEntityList(alerts);
+            var resources = await _assembler.ToResourceFromEntityList(alerts);
 
             return Ok(resources);
         }
@@ -122,7 +125,7 @@ public class CrisisAlertController : ControllerBase
                 return NotFound(new { error = $"Alert with id {id} not found" });
             }
 
-            var resource = CrisisAlertResourceFromEntityAssembler.ToResourceFromEntity(alert);
+            var resource = await _assembler.ToResourceFromEntity(alert);
 
             return Ok(resource);
         }
@@ -145,7 +148,7 @@ public class CrisisAlertController : ControllerBase
             var command = UpdateAlertStatusCommandFromResourceAssembler.ToCommandFromResource(resource, id);
             var alert = await _commandService.Handle(command);
 
-            var responseResource = CrisisAlertResourceFromEntityAssembler.ToResourceFromEntity(alert);
+            var responseResource = await _assembler.ToResourceFromEntity(alert);
 
             return Ok(responseResource);
         }
@@ -173,7 +176,7 @@ public class CrisisAlertController : ControllerBase
             var command = UpdateAlertSeverityCommandFromResourceAssembler.ToCommandFromResource(resource, id);
             var alert = await _commandService.Handle(command);
 
-            var responseResource = CrisisAlertResourceFromEntityAssembler.ToResourceFromEntity(alert);
+            var responseResource = await _assembler.ToResourceFromEntity(alert);
 
             return Ok(responseResource);
         }

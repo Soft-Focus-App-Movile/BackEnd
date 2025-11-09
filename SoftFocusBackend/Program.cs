@@ -249,6 +249,8 @@ builder.Services.AddScoped<SoftFocusBackend.Crisis.Application.Internal.QuerySer
 
 builder.Services.AddScoped<SoftFocusBackend.Crisis.Application.ACL.ICrisisIntegrationService, SoftFocusBackend.Crisis.Application.ACL.CrisisIntegrationService>();
 
+builder.Services.AddScoped<SoftFocusBackend.Crisis.Interfaces.REST.Transform.CrisisAlertResourceFromEntityAssembler>();
+
 // ============================================
 // LIBRARY BOUNDED CONTEXT
 // ============================================

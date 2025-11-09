@@ -3,6 +3,8 @@ namespace SoftFocusBackend.Crisis.Interfaces.REST.Resources;
 public record CrisisAlertResource(
     string Id,
     string PatientId,
+    string PatientName,
+    string? PatientPhotoUrl,
     string PsychologistId,
     string Severity,
     string Status,

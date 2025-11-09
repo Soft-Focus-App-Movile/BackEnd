@@ -1,15 +1,27 @@
 using SoftFocusBackend.Crisis.Domain.Model.Aggregates;
 using SoftFocusBackend.Crisis.Interfaces.REST.Resources;
+using SoftFocusBackend.Users.Application.Internal.OutboundServices;
 
 namespace SoftFocusBackend.Crisis.Interfaces.REST.Transform;
 
-public static class CrisisAlertResourceFromEntityAssembler
+public class CrisisAlertResourceFromEntityAssembler
 {
-    public static CrisisAlertResource ToResourceFromEntity(CrisisAlert entity)
+    private readonly IUserFacade _userFacade;
+
+    public CrisisAlertResourceFromEntityAssembler(IUserFacade userFacade)
     {
+        _userFacade = userFacade;
+    }
+
+    public async Task<CrisisAlertResource> ToResourceFromEntity(CrisisAlert entity)
+    {
+        var patient = await _userFacade.GetUserByIdAsync(entity.PatientId);
+
         return new CrisisAlertResource(
             Id: entity.Id,
             PatientId: entity.PatientId,
+            PatientName: patient?.FullName ?? "Paciente desconocido",
+            PatientPhotoUrl: patient?.ProfileImageUrl,
             PsychologistId: entity.PsychologistId,
             Severity: entity.Severity.ToString(),
             Status: entity.Status.ToString(),
@@ -34,8 +46,9 @@ public static class CrisisAlertResourceFromEntityAssembler
         );
     }
 
-    public static IEnumerable<CrisisAlertResource> ToResourceFromEntityList(IEnumerable<CrisisAlert> entities)
+    public async Task<IEnumerable<CrisisAlertResource>> ToResourceFromEntityList(IEnumerable<CrisisAlert> entities)
     {
-        return entities.Select(ToResourceFromEntity);
+        var tasks = entities.Select(ToResourceFromEntity);
+        return await Task.WhenAll(tasks);
     }
 }
