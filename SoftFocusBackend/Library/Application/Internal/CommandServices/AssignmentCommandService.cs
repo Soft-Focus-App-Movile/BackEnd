@@ -45,13 +45,16 @@ public class AssignmentCommandService : IAssignmentCommandService
             throw new UnauthorizedAccessException("Solo psicólogos pueden asignar contenido");
         }
 
-        // Validar que todos los pacientes existan y pertenezcan al psicólogo
+        // ✅ MEJORA: Validar TODOS los pacientes PRIMERO antes de crear asignaciones
+        var validationErrors = new List<string>();
+
         foreach (var patientId in command.PatientIds)
         {
             var patientExists = await _userIntegration.ValidateUserExistsAsync(patientId);
             if (!patientExists)
             {
-                throw new InvalidOperationException($"Paciente no encontrado: {patientId}");
+                validationErrors.Add($"Usuario no encontrado: {patientId}");
+                continue; // Continuar validando los demás
             }
 
             var belongsToPsychologist = await _userIntegration.ValidatePatientBelongsToPsychologistAsync(
@@ -59,9 +62,20 @@ public class AssignmentCommandService : IAssignmentCommandService
 
             if (!belongsToPsychologist)
             {
-                throw new UnauthorizedAccessException(
-                    $"El paciente {patientId} no pertenece a este psicólogo");
+                validationErrors.Add(
+                    $"El usuario {patientId} no tiene una relación terapéutica activa con este psicólogo");
             }
+        }
+
+        // Si hay errores de validación, fallar ANTES de crear cualquier asignación
+        if (validationErrors.Any())
+        {
+            var errorMessage = $"No se puede asignar contenido debido a los siguientes errores:\n" +
+                              string.Join("\n", validationErrors);
+            _logger.LogWarning(
+                "Assignment validation failed for psychologist {PsychologistId}: {Errors}",
+                command.PsychologistId, string.Join("; ", validationErrors));
+            throw new UnauthorizedAccessException(errorMessage);
         }
 
         // Obtener el contenido
@@ -71,54 +85,75 @@ public class AssignmentCommandService : IAssignmentCommandService
             throw new InvalidOperationException("Contenido no encontrado");
         }
 
-        // Crear asignaciones para cada paciente
+        // ✅ TRANSACCIÓN ATÓMICA: Crear todas las asignaciones
+        // Si falla alguna, el UnitOfWork hará rollback de todas
         var assignmentIds = new List<string>();
 
-        foreach (var patientId in command.PatientIds)
+        try
         {
-            var assignment = ContentAssignment.Create(
-                command.PsychologistId,
-                patientId,
-                content,
-                command.Notes
-            );
-
-            await _assignmentRepository.AddAsync(assignment);
-            assignmentIds.Add(assignment.Id);
-
-            // 🔥 NUEVO: Publicar evento por cada asignación
-            try
+            foreach (var patientId in command.PatientIds)
             {
-                var assignmentEvent = new ContentAssignedEvent(
-                    assignmentId: assignment.Id,
-                    psychologistId: command.PsychologistId,
-                    patientId: patientId,
-                    contentId: content.ExternalId,
-                    contentType: content.ContentType.ToString(),
-                    contentTitle: content.Metadata?.Title ?? "Sin título",
-                    notes: command.Notes
+                var assignment = ContentAssignment.Create(
+                    command.PsychologistId,
+                    patientId,
+                    content,
+                    command.Notes
                 );
 
-                await _eventBus.PublishAsync(assignmentEvent);
+                await _assignmentRepository.AddAsync(assignment);
+                assignmentIds.Add(assignment.Id);
 
-                _logger.LogInformation(
-                    "ContentAssignedEvent published for assignment {AssignmentId}",
-                    assignment.Id);
+                _logger.LogDebug(
+                    "Assignment created: {AssignmentId} for patient {PatientId}",
+                    assignment.Id, patientId);
             }
-            catch (Exception ex)
+
+            // Persistir TODAS las asignaciones de forma atómica
+            await _unitOfWork.CompleteAsync();
+
+            // Solo publicar eventos DESPUÉS de que la transacción haya tenido éxito
+            foreach (var assignmentId in assignmentIds)
             {
-                _logger.LogError(ex,
-                    "Error publishing ContentAssignedEvent for assignment {AssignmentId}: {Error}",
-                    assignment.Id, ex.Message);
+                try
+                {
+                    var patientId = command.PatientIds[assignmentIds.IndexOf(assignmentId)];
+                    var assignmentEvent = new ContentAssignedEvent(
+                        assignmentId: assignmentId,
+                        psychologistId: command.PsychologistId,
+                        patientId: patientId,
+                        contentId: content.ExternalId,
+                        contentType: content.ContentType.ToString(),
+                        contentTitle: content.Metadata?.Title ?? "Sin título",
+                        notes: command.Notes
+                    );
+
+                    await _eventBus.PublishAsync(assignmentEvent);
+
+                    _logger.LogInformation(
+                        "ContentAssignedEvent published for assignment {AssignmentId}",
+                        assignmentId);
+                }
+                catch (Exception ex)
+                {
+                    // Error en eventos no debe fallar la operación (eventos son best-effort)
+                    _logger.LogError(ex,
+                        "Error publishing ContentAssignedEvent for assignment {AssignmentId}: {Error}",
+                        assignmentId, ex.Message);
+                }
             }
+
+            _logger.LogInformation(
+                "Successfully assigned content to {Count} patients by psychologist: {PsychologistId}",
+                command.PatientIds.Count, command.PsychologistId);
+
+            return assignmentIds;
         }
-
-        await _unitOfWork.CompleteAsync();
-
-        _logger.LogInformation(
-            "Content assigned to {Count} patients by psychologist: {PsychologistId}",
-            command.PatientIds.Count, command.PsychologistId);
-
-        return assignmentIds;
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Error creating assignments for psychologist {PsychologistId}. Transaction will be rolled back.",
+                command.PsychologistId);
+            throw; // El UnitOfWork debería hacer rollback automáticamente
+        }
     }
 }

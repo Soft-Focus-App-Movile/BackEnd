@@ -5,6 +5,7 @@ using SoftFocusBackend.Library.Application.ACL.Services;
 using SoftFocusBackend.Users.Application.Internal.OutboundServices;
 using SoftFocusBackend.Users.Domain.Model.Aggregates;
 using SoftFocusBackend.Users.Domain.Model.ValueObjects;
+using SoftFocusBackend.Therapy.Domain.Repositories;
 
 namespace SoftFocusBackend.Library.Application.ACL.Implementations;
 
@@ -15,15 +16,18 @@ public class UserIntegrationService : IUserIntegrationService
 {
     private readonly IUserFacade _userFacade;
     private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly ITherapeuticRelationshipRepository _relationshipRepository;
     private readonly ILogger<UserIntegrationService> _logger;
 
     public UserIntegrationService(
         IUserFacade userFacade,
         IHttpContextAccessor httpContextAccessor,
+        ITherapeuticRelationshipRepository relationshipRepository,
         ILogger<UserIntegrationService> logger)
     {
         _userFacade = userFacade;
         _httpContextAccessor = httpContextAccessor;
+        _relationshipRepository = relationshipRepository;
         _logger = logger;
     }
 
@@ -89,11 +93,24 @@ public class UserIntegrationService : IUserIntegrationService
                 return false;
             }
 
-            // TODO: Implementar validación real cuando se tenga la relación paciente-psicólogo
-            // Por ahora, si ambos usuarios existen y el psicólogo es válido, retornar true
+            // ✅ VALIDACIÓN REAL: Verificar relación terapéutica activa
+            var relationships = await _relationshipRepository.GetByPsychologistIdAsync(psychologistId);
+            var activeRelationship = relationships.FirstOrDefault(r =>
+                r.PatientId == patientId &&
+                r.IsActive &&
+                r.Status == Therapy.Domain.Model.ValueObjects.TherapyStatus.Active);
+
+            if (activeRelationship == null)
+            {
+                _logger.LogWarning(
+                    "No active therapeutic relationship found between psychologist {PsychologistId} and patient {PatientId}",
+                    psychologistId, patientId);
+                return false;
+            }
+
             _logger.LogInformation(
-                "Patient-Psychologist relationship validated (basic check): {PatientId} - {PsychologistId}",
-                patientId, psychologistId);
+                "Active therapeutic relationship validated: {PatientId} - {PsychologistId} (Relationship: {RelationshipId})",
+                patientId, psychologistId, activeRelationship.Id);
 
             return true;
         }
@@ -116,13 +133,18 @@ public class UserIntegrationService : IUserIntegrationService
                 return new List<string>();
             }
 
-            // TODO: Implementar cuando se tenga la relación paciente-psicólogo en el modelo
-            // Por ahora retornar lista vacía
-            _logger.LogWarning(
-                "GetPsychologistPatientsAsync not yet implemented, returning empty list for: {PsychologistId}",
-                psychologistId);
+            // ✅ IMPLEMENTACIÓN REAL: Obtener pacientes con relación terapéutica activa
+            var relationships = await _relationshipRepository.GetByPsychologistIdAsync(psychologistId);
+            var activePatientIds = relationships
+                .Where(r => r.IsActive && r.Status == Therapy.Domain.Model.ValueObjects.TherapyStatus.Active)
+                .Select(r => r.PatientId)
+                .ToList();
 
-            return new List<string>();
+            _logger.LogInformation(
+                "Retrieved {Count} active patients for psychologist: {PsychologistId}",
+                activePatientIds.Count, psychologistId);
+
+            return activePatientIds;
         }
         catch (Exception ex)
         {
