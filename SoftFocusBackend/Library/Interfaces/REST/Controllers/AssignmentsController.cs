@@ -89,7 +89,7 @@ public class AssignmentsController : ControllerBase
     }
 
     /// <summary>
-    /// Paciente obtiene su contenido asignado
+    /// Usuario general (con relación terapéutica) obtiene su contenido asignado
     /// </summary>
     [HttpGet("assigned")]
     [ProducesResponseType(typeof(object), 200)]
@@ -102,10 +102,11 @@ public class AssignmentsController : ControllerBase
         if (userId == null)
             return Unauthorized();
 
-        // Validar que NO sea Psicólogo
+        // ✅ VALIDACIÓN EXPLÍCITA: Solo usuarios generales pueden ver contenido asignado
         var userType = await _userIntegration.GetUserTypeAsync(userId);
-        if (userType == UserType.Psychologist)
-            return Forbid("Los psicólogos no pueden ver contenido asignado");
+        if (userType != UserType.General)
+            return Forbid("Solo usuarios generales pueden ver contenido asignado. " +
+                         "Los psicólogos y administradores no tienen acceso a esta funcionalidad.");
 
         var query = new GetAssignedContentQuery(userId, completed);
         var assignments = await _assignmentQuery.GetAssignedContentAsync(query);
