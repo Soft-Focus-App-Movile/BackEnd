@@ -1,9 +1,11 @@
 using SoftFocusBackend.Crisis.Domain.Model.Aggregates;
 using SoftFocusBackend.Crisis.Domain.Model.Commands;
 using SoftFocusBackend.Crisis.Domain.Model.ValueObjects;
+using SoftFocusBackend.Crisis.Domain.Model.Events;
 using SoftFocusBackend.Crisis.Domain.Repositories;
 using SoftFocusBackend.Crisis.Domain.Services;
 using SoftFocusBackend.Shared.Domain.Repositories;
+using SoftFocusBackend.Shared.Infrastructure.Events;
 using SoftFocusBackend.Therapy.Domain.Repositories;
 
 namespace SoftFocusBackend.Crisis.Application.Internal.CommandServices;
@@ -14,17 +16,23 @@ public class CrisisAlertCommandService : ICrisisAlertCommandService
     private readonly ITherapeuticRelationshipRepository _therapeuticRelationshipRepository;
     private readonly ICrisisNotificationService _notificationService;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IDomainEventBus _eventBus; // ← NUEVO
+    private readonly ILogger<CrisisAlertCommandService> _logger; // ← NUEVO
 
     public CrisisAlertCommandService(
         ICrisisAlertRepository crisisAlertRepository,
         ITherapeuticRelationshipRepository therapeuticRelationshipRepository,
         ICrisisNotificationService notificationService,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IDomainEventBus eventBus,
+        ILogger<CrisisAlertCommandService> logger)
     {
         _crisisAlertRepository = crisisAlertRepository;
         _therapeuticRelationshipRepository = therapeuticRelationshipRepository;
         _notificationService = notificationService;
         _unitOfWork = unitOfWork;
+        _eventBus = eventBus;
+        _logger = logger;
     }
 
     public async Task<CrisisAlert> Handle(CreateCrisisAlertCommand command)
@@ -62,6 +70,31 @@ public class CrisisAlertCommandService : ICrisisAlertCommandService
         await _unitOfWork.CompleteAsync();
 
         await _notificationService.NotifyPsychologistAsync(alert);
+
+        // 🔥 NUEVO: Publicar evento de alerta de crisis
+        try
+        {
+            var crisisEvent = new CrisisAlertCreatedEvent(
+                alertId: alert.Id,
+                patientId: command.PatientId,
+                psychologistId: relationship.PsychologistId,
+                severity: command.Severity.ToString(),
+                triggerSource: command.TriggerSource,
+                triggerReason: command.TriggerReason ?? "No especificado"
+            );
+
+            await _eventBus.PublishAsync(crisisEvent);
+
+            _logger.LogInformation(
+                "CrisisAlertCreatedEvent published for alert {AlertId}",
+                alert.Id);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Error publishing CrisisAlertCreatedEvent for alert {AlertId}: {Error}",
+                alert.Id, ex.Message);
+        }
 
         return alert;
     }
