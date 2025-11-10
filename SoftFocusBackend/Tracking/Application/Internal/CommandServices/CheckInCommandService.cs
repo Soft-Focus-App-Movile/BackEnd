@@ -1,9 +1,11 @@
 using SoftFocusBackend.Tracking.Application.ACL.Services;
 using SoftFocusBackend.Tracking.Domain.Model.Aggregates;
 using SoftFocusBackend.Tracking.Domain.Model.Commands;
+using SoftFocusBackend.Tracking.Domain.Model.Events;
 using SoftFocusBackend.Tracking.Domain.Services;
 using SoftFocusBackend.Tracking.Infrastructure.Persistence.MongoDB.Repositories;
 using SoftFocusBackend.Crisis.Application.ACL;
+using SoftFocusBackend.Shared.Infrastructure.Events;
 
 namespace SoftFocusBackend.Tracking.Application.Internal.CommandServices;
 
@@ -13,6 +15,7 @@ public class CheckInCommandService : ICheckInCommandService
     private readonly ITrackingDomainService _trackingDomainService;
     private readonly ITrackingNotificationService _trackingNotificationService;
     private readonly ICrisisIntegrationService _crisisIntegrationService;
+    private readonly IDomainEventBus _eventBus; // ← NUEVO
     private readonly ILogger<CheckInCommandService> _logger;
 
     public CheckInCommandService(
@@ -20,12 +23,14 @@ public class CheckInCommandService : ICheckInCommandService
         ITrackingDomainService trackingDomainService,
         ITrackingNotificationService trackingNotificationService,
         ICrisisIntegrationService crisisIntegrationService,
+        IDomainEventBus eventBus,
         ILogger<CheckInCommandService> logger)
     {
         _checkInRepository = checkInRepository ?? throw new ArgumentNullException(nameof(checkInRepository));
         _trackingDomainService = trackingDomainService ?? throw new ArgumentNullException(nameof(trackingDomainService));
         _trackingNotificationService = trackingNotificationService ?? throw new ArgumentNullException(nameof(trackingNotificationService));
         _crisisIntegrationService = crisisIntegrationService ?? throw new ArgumentNullException(nameof(crisisIntegrationService));
+        _eventBus = eventBus;
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -58,6 +63,31 @@ public class CheckInCommandService : ICheckInCommandService
 
             await _checkInRepository.AddAsync(checkIn);
 
+            // 🔥 NUEVO: Publicar evento de check-in completado
+            try
+            {
+                var checkInEvent = new CheckInCompletedEvent(
+                    checkInId: checkIn.Id,
+                    patientId: command.UserId,
+                    emotionalLevel: command.EmotionalLevel,
+                    energyLevel: command.EnergyLevel,
+                    symptoms: command.Symptoms?.ToList() ?? new List<string>()
+                );
+
+                await _eventBus.PublishAsync(checkInEvent);
+
+                _logger.LogInformation(
+                    "CheckInCompletedEvent published for check-in {CheckInId}",
+                    checkIn.Id);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Error publishing CheckInCompletedEvent: {Error}",
+                    ex.Message);
+            }
+
+            // Detección de patrón de crisis (mantener lógica existente)
             if (command.EmotionalLevel <= 2 || command.EnergyLevel <= 2)
             {
                 var sevenDaysAgo = DateTime.UtcNow.AddDays(-7);
@@ -72,6 +102,22 @@ public class CheckInCommandService : ICheckInCommandService
                 {
                     _logger.LogWarning("CRISIS PATTERN DETECTED: User {UserId} has {Count} low emotional check-ins in the last 7 days",
                         command.UserId, lowEmotionalDays);
+
+                    // 🔥 NUEVO: Publicar evento de patrón de crisis
+                    try
+                    {
+                        var crisisPatternEvent = new CrisisPatternDetectedEvent(
+                            patientId: command.UserId,
+                            lowEmotionalDaysCount: lowEmotionalDays,
+                            reason: $"Low emotional state for {lowEmotionalDays} out of last 7 days"
+                        );
+
+                        await _eventBus.PublishAsync(crisisPatternEvent);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error publishing CrisisPatternDetectedEvent: {Error}", ex.Message);
+                    }
 
                     await _crisisIntegrationService.CreateAlertFromCheckInAsync(
                         command.UserId,

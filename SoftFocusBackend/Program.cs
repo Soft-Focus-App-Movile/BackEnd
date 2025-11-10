@@ -85,7 +85,13 @@ using Microsoft.AspNetCore.SignalR;
 using SoftFocusBackend.Therapy.Interfaces.REST.Hubs;
 using MongoDB.Bson.Serialization;
 using SoftFocusBackend.Users.Domain.Model.Aggregates;
-
+using SoftFocusBackend.Shared.Domain.Events;
+using SoftFocusBackend.Shared.Infrastructure.Events;
+using SoftFocusBackend.Notification.Application.EventHandlers;
+using SoftFocusBackend.Therapy.Domain.Model.Events;
+using SoftFocusBackend.Library.Domain.Model.Events;
+using SoftFocusBackend.Tracking.Domain.Model.Events;
+using SoftFocusBackend.Crisis.Domain.Model.Events;
 
 Env.Load();
 
@@ -134,6 +140,27 @@ builder.Services.AddCors(options =>
     });
 });
 
+// ============================================
+//  DOMAIN EVENT BUS CONFIGURATION
+// ============================================
+
+// Registrar el Event Bus como Singleton
+builder.Services.AddSingleton<IDomainEventBus, DomainEventBus>();
+
+// ============================================
+//  NOTIFICATION EVENT HANDLERS
+// ============================================
+
+// Registrar todos los Event Handlers
+builder.Services.AddScoped<MessageSentEventHandler>();
+builder.Services.AddScoped<ContentAssignedEventHandler>();
+builder.Services.AddScoped<AssignmentCompletedEventHandler>();
+builder.Services.AddScoped<AllAssignmentsCompletedEventHandler>();
+builder.Services.AddScoped<CheckInCompletedEventHandler>();
+builder.Services.AddScoped<CrisisAlertCreatedEventHandler>();
+
+// ... resto de la configuración de servicios existente ...
+
 builder.Services.Configure<MongoDbSettings>(builder.Configuration.GetSection("MongoDbSettings"));
 builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
 builder.Services.Configure<CloudinarySettings>(builder.Configuration.GetSection("CloudinarySettings"));
@@ -180,8 +207,7 @@ builder.Services.AddScoped<IUserFacade, UserFacade>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IPsychologistRepository, PsychologistRepository>();
 
-// Useers -   ACL
-
+// Users - ACL
 builder.Services.AddScoped<IAuthNotificationService, AuthNotificationService>();
 
 // Tracking - Domain Services
@@ -203,8 +229,6 @@ builder.Services.AddScoped<ITrackingNotificationService, TrackingNotificationSer
 
 // Tracking - Facade
 builder.Services.AddScoped<ITrackingFacade, TrackingFacade>();
-
-
 
 builder.Services.AddScoped<IUserFacade, UserFacade>();
 
@@ -350,8 +374,6 @@ builder.Services.AddScoped<SoftFocusBackend.Therapy.Application.Internal.Outboun
 builder.Services.AddSignalR(); // Add SignalR services
 builder.Services.AddControllers();
 
-
-
 // HttpContextAccessor for user context
 builder.Services.AddHttpContextAccessor();
 
@@ -491,6 +513,84 @@ builder.Services.AddScoped<IOAuthService, GoogleOAuthService>(provider =>
 builder.Services.AddScoped<SoftFocusBackend.Auth.Infrastructure.OAuth.Services.IOAuthTempTokenService, SoftFocusBackend.Auth.Infrastructure.OAuth.Services.OAuthTempTokenService>();
 
 var app = builder.Build();
+
+// ============================================
+// SUBSCRIBE EVENT HANDLERS TO EVENT BUS
+// ============================================
+
+// Obtener el Event Bus y registrar los handlers
+var eventBus = app.Services.GetRequiredService<IDomainEventBus>();
+
+using (var scope = app.Services.CreateScope())
+{
+    var serviceProvider = scope.ServiceProvider;
+
+    //  Therapy Events
+    eventBus.Subscribe<MessageSentEvent>(async evt =>
+    {
+        using var handlerScope = app.Services.CreateScope();
+        var handler = handlerScope.ServiceProvider.GetRequiredService<MessageSentEventHandler>();
+        await handler.HandleAsync(evt);
+    });
+
+    eventBus.Subscribe<TherapeuticRelationshipEstablishedEvent>(async evt =>
+    {
+        // Handler futuro para cuando se establece relación
+        var logger = serviceProvider.GetRequiredService<ILogger<Program>>();
+        logger.LogInformation(
+            "Therapeutic relationship established: {RelationshipId} between {PsychologistId} and {PatientId}",
+            evt.RelationshipId, evt.PsychologistId, evt.PatientId);
+    });
+
+    //  Library Events
+    eventBus.Subscribe<ContentAssignedEvent>(async evt =>
+    {
+        using var handlerScope = app.Services.CreateScope();
+        var handler = handlerScope.ServiceProvider.GetRequiredService<ContentAssignedEventHandler>();
+        await handler.HandleAsync(evt);
+    });
+
+    eventBus.Subscribe<AssignmentCompletedEvent>(async evt =>
+    {
+        using var handlerScope = app.Services.CreateScope();
+        var handler = handlerScope.ServiceProvider.GetRequiredService<AssignmentCompletedEventHandler>();
+        await handler.HandleAsync(evt);
+    });
+
+    eventBus.Subscribe<AllAssignmentsCompletedEvent>(async evt =>
+    {
+        using var handlerScope = app.Services.CreateScope();
+        var handler = handlerScope.ServiceProvider.GetRequiredService<AllAssignmentsCompletedEventHandler>();
+        await handler.HandleAsync(evt);
+    });
+
+    // ✅ Tracking Events
+    eventBus.Subscribe<CheckInCompletedEvent>(async evt =>
+    {
+        using var handlerScope = app.Services.CreateScope();
+        var handler = handlerScope.ServiceProvider.GetRequiredService<CheckInCompletedEventHandler>();
+        await handler.HandleAsync(evt);
+    });
+
+    eventBus.Subscribe<CrisisPatternDetectedEvent>(async evt =>
+    {
+        var logger = serviceProvider.GetRequiredService<ILogger<Program>>();
+        logger.LogWarning(
+            "Crisis pattern detected for patient {PatientId}: {Reason}",
+            evt.PatientId, evt.Reason);
+    });
+
+    // ✅ Crisis Events
+    eventBus.Subscribe<CrisisAlertCreatedEvent>(async evt =>
+    {
+        using var handlerScope = app.Services.CreateScope();
+        var handler = handlerScope.ServiceProvider.GetRequiredService<CrisisAlertCreatedEventHandler>();
+        await handler.HandleAsync(evt);
+    });
+
+    var logger = serviceProvider.GetRequiredService<ILogger<Program>>();
+    logger.LogInformation("✅ All domain event handlers registered successfully");
+}
 
 using (var scope = app.Services.CreateScope())
 {
