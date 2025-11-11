@@ -96,16 +96,12 @@ public static class PsychologistResourceAssembler
     {
         return new PsychologistStatsResource
         {
-            ConnectedPatientsCount = stats.ConnectedPatientsCount,
-            TotalCheckInsReceived = stats.TotalCheckInsReceived,
-            CrisisAlertsHandled = stats.CrisisAlertsHandled,
-            AverageResponseTime = stats.GetFormattedResponseTime(),
-            IsAcceptingNewPatients = stats.IsAcceptingNewPatients,
-            LastActivityDate = stats.LastActivityDate,
-            JoinedDate = stats.JoinedDate,
-            AverageRating = stats.AverageRating,
-            TotalReviews = stats.TotalReviews,
-            ExperienceLevel = stats.GetExperienceLevel(),
+            ActivePatientsCount = stats.ActivePatientsCount,
+            PendingCrisisAlerts = stats.PendingCrisisAlerts,
+            TodayCheckInsCompleted = stats.TodayCheckInsCompleted,
+            AverageAdherenceRate = stats.AverageAdherenceRate,
+            NewPatientsThisMonth = stats.NewPatientsThisMonth,
+            AverageEmotionalLevel = stats.AverageEmotionalLevel,
             StatsGeneratedAt = DateTime.UtcNow
         };
     }

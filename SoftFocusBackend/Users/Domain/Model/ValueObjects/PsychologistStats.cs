@@ -2,68 +2,44 @@ namespace SoftFocusBackend.Users.Domain.Model.ValueObjects;
 
 public record PsychologistStats
 {
-    public int ConnectedPatientsCount { get; init; }
-    public int TotalCheckInsReceived { get; init; }
-    public int CrisisAlertsHandled { get; init; }
-    public TimeSpan AverageResponseTime { get; init; }
-    public bool IsAcceptingNewPatients { get; init; }
-    public DateTime? LastActivityDate { get; init; }
-    public DateTime JoinedDate { get; init; }
-    public double? AverageRating { get; init; }
-    public int TotalReviews { get; init; }
+    public int ActivePatientsCount { get; init; }
+    public int PendingCrisisAlerts { get; init; }
+    public int TodayCheckInsCompleted { get; init; }
+    public double AverageAdherenceRate { get; init; }
+    public int NewPatientsThisMonth { get; init; }
+    public double AverageEmotionalLevel { get; init; }
 
-    public PsychologistStats(int connectedPatientsCount, int totalCheckInsReceived, 
-        int crisisAlertsHandled, TimeSpan averageResponseTime, bool isAcceptingNewPatients,
-        DateTime? lastActivityDate, DateTime joinedDate, double? averageRating = null, 
-        int totalReviews = 0)
+    public PsychologistStats(
+        int activePatientsCount,
+        int pendingCrisisAlerts,
+        int todayCheckInsCompleted,
+        double averageAdherenceRate,
+        int newPatientsThisMonth,
+        double averageEmotionalLevel)
     {
-        if (connectedPatientsCount < 0)
-            throw new ArgumentException("Connected patients count cannot be negative.", nameof(connectedPatientsCount));
-        
-        if (totalCheckInsReceived < 0)
-            throw new ArgumentException("Total check-ins received cannot be negative.", nameof(totalCheckInsReceived));
-        
-        if (crisisAlertsHandled < 0)
-            throw new ArgumentException("Crisis alerts handled cannot be negative.", nameof(crisisAlertsHandled));
+        if (activePatientsCount < 0)
+            throw new ArgumentException("Active patients count cannot be negative.", nameof(activePatientsCount));
 
-        if (averageRating.HasValue && (averageRating < 0 || averageRating > 5))
-            throw new ArgumentException("Average rating must be between 0 and 5.", nameof(averageRating));
+        if (pendingCrisisAlerts < 0)
+            throw new ArgumentException("Pending crisis alerts cannot be negative.", nameof(pendingCrisisAlerts));
 
-        if (totalReviews < 0)
-            throw new ArgumentException("Total reviews cannot be negative.", nameof(totalReviews));
+        if (todayCheckInsCompleted < 0)
+            throw new ArgumentException("Today check-ins completed cannot be negative.", nameof(todayCheckInsCompleted));
 
-        ConnectedPatientsCount = connectedPatientsCount;
-        TotalCheckInsReceived = totalCheckInsReceived;
-        CrisisAlertsHandled = crisisAlertsHandled;
-        AverageResponseTime = averageResponseTime;
-        IsAcceptingNewPatients = isAcceptingNewPatients;
-        LastActivityDate = lastActivityDate;
-        JoinedDate = joinedDate;
-        AverageRating = averageRating;
-        TotalReviews = totalReviews;
-    }
+        if (averageAdherenceRate < 0 || averageAdherenceRate > 100)
+            throw new ArgumentException("Average adherence rate must be between 0 and 100.", nameof(averageAdherenceRate));
 
-    public string GetFormattedResponseTime()
-    {
-        if (AverageResponseTime.TotalMinutes < 1)
-            return "< 1 minute";
-        
-        if (AverageResponseTime.TotalMinutes < 60)
-            return $"{AverageResponseTime.TotalMinutes:F0} minutes";
-        
-        return $"{AverageResponseTime.TotalHours:F1} hours";
-    }
+        if (newPatientsThisMonth < 0)
+            throw new ArgumentException("New patients this month cannot be negative.", nameof(newPatientsThisMonth));
 
-    public string GetExperienceLevel()
-    {
-        var experience = DateTime.UtcNow - JoinedDate;
-        
-        if (experience.TotalDays < 30)
-            return "New";
-        
-        if (experience.TotalDays < 365)
-            return "Experienced";
-        
-        return "Veteran";
+        if (averageEmotionalLevel < 0 || averageEmotionalLevel > 10)
+            throw new ArgumentException("Average emotional level must be between 0 and 10.", nameof(averageEmotionalLevel));
+
+        ActivePatientsCount = activePatientsCount;
+        PendingCrisisAlerts = pendingCrisisAlerts;
+        TodayCheckInsCompleted = todayCheckInsCompleted;
+        AverageAdherenceRate = averageAdherenceRate;
+        NewPatientsThisMonth = newPatientsThisMonth;
+        AverageEmotionalLevel = averageEmotionalLevel;
     }
 }

@@ -2,15 +2,14 @@ namespace SoftFocusBackend.Users.Interfaces.REST.Resources;
 
 public record PsychologistStatsResource
 {
-    public int ConnectedPatientsCount { get; init; }
-    public int TotalCheckInsReceived { get; init; }
-    public int CrisisAlertsHandled { get; init; }
-    public string AverageResponseTime { get; init; } = string.Empty;
-    public bool IsAcceptingNewPatients { get; init; }
-    public DateTime? LastActivityDate { get; init; }
-    public DateTime JoinedDate { get; init; }
-    public double? AverageRating { get; init; }
-    public int TotalReviews { get; init; }
-    public string ExperienceLevel { get; init; } = string.Empty;
+    // Estadísticas principales para el dashboard
+    public int ActivePatientsCount { get; init; }
+    public int PendingCrisisAlerts { get; init; }
+    public int TodayCheckInsCompleted { get; init; }
+    public double AverageAdherenceRate { get; init; }
+    public int NewPatientsThisMonth { get; init; }
+    public double AverageEmotionalLevel { get; init; }
+
+    // Información adicional
     public DateTime StatsGeneratedAt { get; init; }
 }
