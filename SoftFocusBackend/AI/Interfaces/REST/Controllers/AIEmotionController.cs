@@ -38,7 +38,7 @@ public class AIEmotionController : ControllerBase
     [ProducesResponseType(typeof(object), StatusCodes.Status413PayloadTooLarge)]
     [ProducesResponseType(typeof(object), StatusCodes.Status429TooManyRequests)]
     [ProducesResponseType(typeof(object), StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> AnalyzeEmotion(IFormFile image, bool autoCheckIn = true)
+    public async Task<IActionResult> AnalyzeEmotion(IFormFile image, [FromForm] bool autoCheckIn = true)
     {
         try
         {
@@ -68,6 +68,8 @@ public class AIEmotionController : ControllerBase
                 return StatusCode(StatusCodes.Status413PayloadTooLarge,
                     AIResourceAssembler.ToErrorResponse("Image size exceeds 5MB limit"));
             }
+
+            _logger.LogInformation("Processing emotion analysis for user {UserId} with autoCheckIn={AutoCheckIn}", userId, autoCheckIn);
 
             byte[] imageBytes;
             using (var memoryStream = new MemoryStream())
