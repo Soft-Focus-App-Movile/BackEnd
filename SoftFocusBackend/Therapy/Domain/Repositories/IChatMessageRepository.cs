@@ -9,5 +9,6 @@ namespace SoftFocusBackend.Therapy.Domain.Repositories
         Task<IEnumerable<ChatMessage>> GetUnreadByReceiverIdAsync(string receiverId);
         Task AddAsync(ChatMessage message);
         Task UpdateAsync(ChatMessage message);
+        Task<ChatMessage?> GetLastMessageByReceiverIdAsync(string receiverId);
     }
 }

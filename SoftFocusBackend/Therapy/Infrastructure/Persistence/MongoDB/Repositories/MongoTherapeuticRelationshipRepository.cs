@@ -15,9 +15,9 @@ namespace SoftFocusBackend.Therapy.Infrastructure.Persistence.MongoDB.Repositori
             CreateIndexes();
         }
 
-        public Task<TherapeuticRelationship?> GetByIdAsync(string id)
+        public async Task<TherapeuticRelationship?> GetByIdAsync(string id)
         {
-            throw new NotImplementedException();
+            return await Collection.Find(x => x.Id == id).FirstOrDefaultAsync();
         }
 
         public async Task<TherapeuticRelationship?> GetByConnectionCodeAsync(ConnectionCode code)

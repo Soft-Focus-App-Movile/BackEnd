@@ -17,5 +17,10 @@ namespace SoftFocusBackend.Therapy.Application.Internal.QueryServices
         {
             return await _messageRepository.GetByRelationshipIdAsync(query.RelationshipId, query.Page, query.Size);
         }
+        
+        public async Task<ChatMessage?> Handle(GetLastMessageQuery query)
+        {
+            return await _messageRepository.GetLastMessageByReceiverIdAsync(query.ReceiverId);
+        }
     }
 }

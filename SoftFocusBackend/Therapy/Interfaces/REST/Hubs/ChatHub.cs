@@ -10,12 +10,8 @@ namespace SoftFocusBackend.Therapy.Interfaces.REST.Hubs
         // Method to send a message to a specific user
         public async Task SendMessage(string receiverId, string message)
         {
-            // Find the connection ID of the receiver using their user ID
-            var receiverConnectionId = GetConnectionIdByUserId(receiverId);
-            if (receiverConnectionId != null)
-            {
-                await Clients.Client(receiverConnectionId).SendAsync("ReceiveMessage", message);
-            }
+            // Envía el mensaje a todas las conexiones asociadas con ese receiverId (UserId)
+            await Clients.User(receiverId).SendAsync("ReceiveMessage", message);
         }
 
         // Method to broadcast a message to all connected clients in the relationship

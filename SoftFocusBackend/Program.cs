@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using DotNetEnv;
 using SoftFocusBackend.Shared.Domain.Repositories;
 using SoftFocusBackend.Shared.Infrastructure.Persistence;
@@ -92,6 +93,7 @@ using SoftFocusBackend.Therapy.Domain.Model.Events;
 using SoftFocusBackend.Library.Domain.Model.Events;
 using SoftFocusBackend.Tracking.Domain.Model.Events;
 using SoftFocusBackend.Crisis.Domain.Model.Events;
+using SoftFocusBackend.Therapy.Infrastructure.ExternalServices;
 
 Env.Load();
 
@@ -370,8 +372,11 @@ builder.Services.AddScoped<SoftFocusBackend.Therapy.Application.Internal.QuerySe
 builder.Services.AddScoped<SoftFocusBackend.Therapy.Application.Internal.QueryServices.PatientDirectoryQueryService>();
 builder.Services.AddScoped<SoftFocusBackend.Therapy.Application.Internal.OutboundServices.IPatientFacade, SoftFocusBackend.Therapy.Infrastructure.ACL.Services.PatientFacade>();
 
+builder.Services.AddScoped<SignalRChatService>();
+
 // Add services to the container
 builder.Services.AddSignalR(); // Add SignalR services
+builder.Services.AddSingleton<IUserIdProvider, NameIdentifierUserIdProvider>();
 builder.Services.AddControllers();
 
 // HttpContextAccessor for user context
@@ -420,7 +425,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateAudience = tokenSettings.ValidateAudience,
             ValidAudience = tokenSettings.Audience,
             ValidateLifetime = tokenSettings.ValidateLifetime,
-            ClockSkew = TimeSpan.FromMinutes(tokenSettings.ClockSkewMinutes)
+            ClockSkew = TimeSpan.FromMinutes(tokenSettings.ClockSkewMinutes),
+            NameClaimType = ClaimTypes.NameIdentifier
         };
     });
 

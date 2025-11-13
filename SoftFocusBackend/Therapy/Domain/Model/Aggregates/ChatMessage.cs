@@ -6,9 +6,6 @@ namespace SoftFocusBackend.Therapy.Domain.Model.Aggregates
 {
     public class ChatMessage : BaseEntity
     {
-        [BsonElement("chat_message_id")]
-        public string Id { get; private set; }
-        
         [BsonElement("relationship_id")]
         public string RelationshipId { get; private set; } // Link to TherapeuticRelationship
         
@@ -32,7 +29,6 @@ namespace SoftFocusBackend.Therapy.Domain.Model.Aggregates
 
         public ChatMessage(string relationshipId, string senderId, string receiverId, MessageContent content, string messageType)
         {
-            Id = Guid.NewGuid().ToString();
             RelationshipId = relationshipId ?? throw new ArgumentNullException(nameof(relationshipId));
             SenderId = senderId ?? throw new ArgumentNullException(nameof(senderId));
             ReceiverId = receiverId ?? throw new ArgumentNullException(nameof(receiverId));
