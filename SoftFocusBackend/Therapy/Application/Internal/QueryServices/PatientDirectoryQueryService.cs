@@ -75,5 +75,36 @@ namespace SoftFocusBackend.Therapy.Application.Internal.QueryServices
                 sessionCount = activeRelationship.SessionCount
             };
         }
+
+        public async Task<IEnumerable<object>> GetPsychologistRelationships(GetPsychologistRelationshipsQuery query)
+        {
+            var relationships = await _relationshipRepository.GetByPsychologistIdAsync(query.PsychologistId);
+            var activeRelationships = relationships.Where(r => r.Status == TherapyStatus.Active && r.IsActive);
+
+            var result = new List<object>();
+
+            foreach (var rel in activeRelationships)
+            {
+                // Obtener datos del paciente
+                var patientUser = await _patientFacade.FetchPatientById(rel.PatientId);
+
+                if (patientUser == null) continue;
+
+                result.Add(new
+                {
+                    id = rel.Id,
+                    psychologistId = rel.PsychologistId,
+                    patientId = rel.PatientId,
+                    patientName = $"{patientUser.FirstName} {patientUser.LastName}",
+                    patientEmail = patientUser.Email,
+                    startDate = rel.StartDate,
+                    status = rel.Status.ToString(),
+                    isActive = rel.IsActive,
+                    sessionCount = rel.SessionCount
+                });
+            }
+
+            return result;
+        }
     }
 }

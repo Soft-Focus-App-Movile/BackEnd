@@ -12,6 +12,7 @@ using SoftFocusBackend.Users.Domain.Services;
 using SoftFocusBackend.Shared.Infrastructure.ExternalServices.Cloudinary.Configuration;
 using SoftFocusBackend.Shared.Infrastructure.ExternalServices.Cloudinary.Services;
 using SoftFocusBackend.Users.Application.Internal.OutboundServices;
+using Swashbuckle.AspNetCore.Annotations;
 
 namespace SoftFocusBackend.Users.Interfaces.REST.Controllers;
 
@@ -45,6 +46,12 @@ public class PsychologistController : ControllerBase
     }
 
     [HttpGet("verification")]
+    [SwaggerOperation(
+        Summary = "Get psychologist verification status",
+        Description = "Retrieves the verification status and documentation of the authenticated psychologist.",
+        OperationId = "GetVerificationStatus",
+        Tags = new[] { "Psychologist Profile" }
+    )]
     [ProducesResponseType(typeof(PsychologistVerificationResource), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(object), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(object), StatusCodes.Status401Unauthorized)]
@@ -78,9 +85,15 @@ public class PsychologistController : ControllerBase
     }
 
     [HttpPut("verification")]
+    [SwaggerOperation(
+        Summary = "Update psychologist verification documents",
+        Description = "Updates verification documents (license, diploma, ID, certificates) for psychologist verification. Use multipart/form-data.",
+        OperationId = "UpdateVerification",
+        Tags = new[] { "Psychologist Profile" }
+    )]
     [ProducesResponseType(typeof(PsychologistVerificationResource), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(object), StatusCodes.Status401Unauthorized)] 
+    [ProducesResponseType(typeof(object), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> UpdateVerification([FromForm] PsychologistVerificationResource resource)
     {
         try
@@ -185,6 +198,12 @@ public class PsychologistController : ControllerBase
     }
 
     [HttpGet("invitation-code")]
+    [SwaggerOperation(
+        Summary = "Get psychologist invitation code",
+        Description = "Retrieves or auto-generates the invitation code for the verified psychologist. Patients use this code to connect.",
+        OperationId = "GetInvitationCode",
+        Tags = new[] { "Psychologist Profile" }
+    )]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(object), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(object), StatusCodes.Status401Unauthorized)]
@@ -249,6 +268,12 @@ public class PsychologistController : ControllerBase
     }
 
     [HttpPost("regenerate-code")]
+    [SwaggerOperation(
+        Summary = "Regenerate invitation code",
+        Description = "Manually regenerates a new invitation code for the psychologist. Previous code becomes invalid.",
+        OperationId = "RegenerateInvitationCode",
+        Tags = new[] { "Psychologist Profile" }
+    )]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(object), StatusCodes.Status401Unauthorized)]
@@ -291,6 +316,12 @@ public class PsychologistController : ControllerBase
     }
 
     [HttpGet("complete")]
+    [SwaggerOperation(
+        Summary = "Get complete psychologist profile",
+        Description = "Retrieves the complete profile including personal, professional, and verification information.",
+        OperationId = "GetCompleteProfile",
+        Tags = new[] { "Psychologist Profile" }
+    )]
     [ProducesResponseType(typeof(PsychologistCompleteProfileResource), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(object), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(object), StatusCodes.Status401Unauthorized)]

@@ -5,12 +5,14 @@ using SoftFocusBackend.Library.Application.Internal.QueryServices;
 using SoftFocusBackend.Library.Domain.Model.Queries;
 using SoftFocusBackend.Library.Domain.Model.ValueObjects;
 using SoftFocusBackend.Library.Interfaces.REST.Resources;
+using Swashbuckle.AspNetCore.Annotations;
 
 namespace SoftFocusBackend.Library.Interfaces.REST.Controllers;
 
 [ApiController]
 [Route("api/v1/library/recommendations")]
 [Authorize]
+[Produces("application/json")]
 public class RecommendationsController : ControllerBase
 {
     private readonly IRecommendationQueryService _recommendationQuery;
@@ -20,13 +22,16 @@ public class RecommendationsController : ControllerBase
         _recommendationQuery = recommendationQuery;
     }
 
-    /// <summary>
-    /// Obtiene información del clima actual
-    /// </summary>
     [HttpGet("places")]
-    [ProducesResponseType(typeof(object), 200)]
-    [ProducesResponseType(400)]
-    [ProducesResponseType(401)]
+    [SwaggerOperation(
+        Summary = "Get place recommendations with weather",
+        Description = "Retrieves weather information and nearby place recommendations based on user location and optional emotion filter.",
+        OperationId = "GetPlaceRecommendations",
+        Tags = new[] { "Recommendations" }
+    )]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> GetPlaceRecommendations(
         [FromQuery] double latitude,
         [FromQuery] double longitude,
@@ -81,13 +86,16 @@ public class RecommendationsController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Obtiene recomendaciones de contenido basadas en una emoción
-    /// </summary>
     [HttpGet("content")]
-    [ProducesResponseType(typeof(object), 200)]
-    [ProducesResponseType(400)]
-    [ProducesResponseType(401)]
+    [SwaggerOperation(
+        Summary = "Get personalized content recommendations",
+        Description = "Retrieves personalized content recommendations for the user based on their preferences and history. Supports filtering by content type.",
+        OperationId = "GetContentRecommendations",
+        Tags = new[] { "Recommendations" }
+    )]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> GetContentRecommendations(
         [FromQuery] string? contentType = null,
         [FromQuery] int limit = 10)
@@ -120,13 +128,16 @@ public class RecommendationsController : ControllerBase
         return Ok(response);
     }
 
-    /// <summary>
-    /// Obtiene recomendaciones específicas por tipo de emoción
-    /// </summary>
     [HttpGet("emotion/{emotion}")]
-    [ProducesResponseType(typeof(object), 200)]
-    [ProducesResponseType(400)]
-    [ProducesResponseType(401)]
+    [SwaggerOperation(
+        Summary = "Get recommendations by emotion",
+        Description = "Retrieves content recommendations filtered by a specific emotion (e.g., Happy, Sad, Anxious). Supports content type filtering.",
+        OperationId = "GetRecommendationsByEmotion",
+        Tags = new[] { "Recommendations" }
+    )]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> GetRecommendationsByEmotion(
         string emotion,
         [FromQuery] string? contentType = null,

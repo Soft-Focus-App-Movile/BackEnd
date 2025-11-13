@@ -124,6 +124,15 @@ public class User : BaseEntity
         UpdatedAt = DateTime.UtcNow;
     }
 
+    public void UpdatePassword(string passwordHash)
+    {
+        if (string.IsNullOrWhiteSpace(passwordHash))
+            throw new ArgumentException("Password hash cannot be empty");
+
+        PasswordHash = passwordHash;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
     public virtual void ValidateForCreation()
     {
         if (string.IsNullOrWhiteSpace(Email))

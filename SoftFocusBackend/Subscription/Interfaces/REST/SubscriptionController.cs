@@ -6,12 +6,14 @@ using SoftFocusBackend.Subscription.Application.Queries;
 using SoftFocusBackend.Subscription.Application.Services;
 using SoftFocusBackend.Subscription.Domain.ValueObjects;
 using System.Security.Claims;
+using Swashbuckle.AspNetCore.Annotations;
 
 namespace SoftFocusBackend.Subscription.Interfaces.REST;
 
 [ApiController]
 [Route("api/v1/subscriptions")]
 [Authorize]
+[Produces("application/json")]
 public class SubscriptionController : ControllerBase
 {
     private readonly ISubscriptionCommandService _commandService;
@@ -28,10 +30,16 @@ public class SubscriptionController : ControllerBase
         _logger = logger;
     }
 
-    /// <summary>
-    /// Get current user's subscription
-    /// </summary>
     [HttpGet("me")]
+    [SwaggerOperation(
+        Summary = "Get user subscription",
+        Description = "Retrieves the current subscription details for the authenticated user. Auto-creates a Basic subscription if none exists.",
+        OperationId = "GetMySubscription",
+        Tags = new[] { "Subscriptions" }
+    )]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetMySubscription()
     {
         try
@@ -70,10 +78,16 @@ public class SubscriptionController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Get usage statistics for current user
-    /// </summary>
     [HttpGet("usage")]
+    [SwaggerOperation(
+        Summary = "Get usage statistics",
+        Description = "Retrieves usage statistics for AI features (chat, facial analysis) for the authenticated user.",
+        OperationId = "GetUsageStats",
+        Tags = new[] { "Subscriptions" }
+    )]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetUsageStats()
     {
         try
@@ -116,10 +130,17 @@ public class SubscriptionController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Check access to a specific feature
-    /// </summary>
     [HttpGet("check-access/{featureType}")]
+    [SwaggerOperation(
+        Summary = "Check feature access",
+        Description = "Checks if the user has access to a specific feature based on their subscription plan and usage limits.",
+        OperationId = "CheckFeatureAccess",
+        Tags = new[] { "Subscriptions" }
+    )]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> CheckFeatureAccess(FeatureType featureType)
     {
         try
@@ -148,10 +169,17 @@ public class SubscriptionController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Create a checkout session to upgrade to Pro
-    /// </summary>
     [HttpPost("upgrade/checkout")]
+    [SwaggerOperation(
+        Summary = "Create Pro upgrade checkout",
+        Description = "Creates a Stripe checkout session to upgrade the user's subscription to Pro plan.",
+        OperationId = "CreateCheckoutSession",
+        Tags = new[] { "Subscriptions" }
+    )]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> CreateCheckoutSession(
         [FromBody] CreateCheckoutSessionRequest request)
     {
@@ -176,10 +204,17 @@ public class SubscriptionController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Cancel subscription
-    /// </summary>
     [HttpPost("cancel")]
+    [SwaggerOperation(
+        Summary = "Cancel subscription",
+        Description = "Cancels the user's subscription. Can be immediate or at the end of the billing period.",
+        OperationId = "CancelSubscription",
+        Tags = new[] { "Subscriptions" }
+    )]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> CancelSubscription([FromBody] bool cancelImmediately = false)
     {
         try
@@ -208,10 +243,17 @@ public class SubscriptionController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Track feature usage (internal endpoint, typically called by other services)
-    /// </summary>
     [HttpPost("track-usage")]
+    [SwaggerOperation(
+        Summary = "Track feature usage",
+        Description = "Records usage of a specific feature for billing and limit enforcement. Typically called internally by other services.",
+        OperationId = "TrackUsage",
+        Tags = new[] { "Subscriptions" }
+    )]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> TrackUsage([FromBody] TrackFeatureUsageCommand command)
     {
         try
@@ -236,10 +278,16 @@ public class SubscriptionController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Initialize subscription for current user (Helper endpoint for existing users without subscription)
-    /// </summary>
     [HttpPost("initialize")]
+    [SwaggerOperation(
+        Summary = "Initialize subscription",
+        Description = "Creates a Basic subscription for existing users who don't have one yet. Helper endpoint for migration.",
+        OperationId = "InitializeSubscription",
+        Tags = new[] { "Subscriptions" }
+    )]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> InitializeSubscription()
     {
         try

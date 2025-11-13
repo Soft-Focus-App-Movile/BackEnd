@@ -7,6 +7,7 @@ using SoftFocusBackend.AI.Interfaces.REST.Resources;
 using SoftFocusBackend.AI.Interfaces.REST.Transform;
 using SoftFocusBackend.AI.Domain.Model.ValueObjects;
 using SoftFocusBackend.AI.Domain.Repositories;
+using Swashbuckle.AspNetCore.Annotations;
 
 namespace SoftFocusBackend.AI.Interfaces.REST.Controllers;
 
@@ -37,9 +38,16 @@ public class AIChatController : ControllerBase
     }
 
     [HttpPost("message")]
+    [SwaggerOperation(
+        Summary = "Send AI chat message",
+        Description = "Sends a message to the AI chatbot and receives an intelligent response. Subject to usage limits based on subscription tier.",
+        OperationId = "SendAIChatMessage",
+        Tags = new[] { "AI Chat" }
+    )]
     [ProducesResponseType(typeof(ChatMessageResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(object), StatusCodes.Status429TooManyRequests)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(object), StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> SendMessage([FromBody] ChatMessageRequest request)
     {
@@ -91,6 +99,12 @@ public class AIChatController : ControllerBase
     }
 
     [HttpGet("usage")]
+    [SwaggerOperation(
+        Summary = "Get AI usage statistics",
+        Description = "Retrieves the current user's AI feature usage statistics including chat and facial analysis limits.",
+        OperationId = "GetAIUsage",
+        Tags = new[] { "AI Chat" }
+    )]
     [ProducesResponseType(typeof(AIUsageStatsResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(object), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(object), StatusCodes.Status500InternalServerError)]
@@ -130,6 +144,12 @@ public class AIChatController : ControllerBase
     }
 
     [HttpGet("sessions")]
+    [SwaggerOperation(
+        Summary = "Get chat sessions",
+        Description = "Retrieves the user's AI chat session history with preview of last messages.",
+        OperationId = "GetChatSessions",
+        Tags = new[] { "AI Chat" }
+    )]
     [ProducesResponseType(typeof(ChatHistoryResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(object), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> GetChatSessions([FromQuery] int pageSize = 20)
@@ -178,6 +198,12 @@ public class AIChatController : ControllerBase
     }
 
     [HttpGet("sessions/{sessionId}/messages")]
+    [SwaggerOperation(
+        Summary = "Get session messages",
+        Description = "Retrieves all messages from a specific AI chat session.",
+        OperationId = "GetSessionMessages",
+        Tags = new[] { "AI Chat" }
+    )]
     [ProducesResponseType(typeof(SessionMessagesResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(object), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(object), StatusCodes.Status404NotFound)]

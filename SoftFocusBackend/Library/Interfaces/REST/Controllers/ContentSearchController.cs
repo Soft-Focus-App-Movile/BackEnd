@@ -6,12 +6,14 @@ using SoftFocusBackend.Library.Application.Internal.QueryServices;
 using SoftFocusBackend.Library.Domain.Model.Queries;
 using SoftFocusBackend.Library.Domain.Model.ValueObjects;
 using SoftFocusBackend.Library.Interfaces.REST.Resources;
+using Swashbuckle.AspNetCore.Annotations;
 
 namespace SoftFocusBackend.Library.Interfaces.REST.Controllers;
 
 [ApiController]
 [Route("api/v1/library")]
 [Authorize]
+[Produces("application/json")]
 public class ContentSearchController : ControllerBase
 {
     private readonly IContentSearchQueryService _searchQuery;
@@ -26,9 +28,15 @@ public class ContentSearchController : ControllerBase
     }
 
     [HttpGet("{contentId}")]
-    [ProducesResponseType(typeof(ContentItemResponse), 200)]
-    [ProducesResponseType(404)]
-    [ProducesResponseType(401)]
+    [SwaggerOperation(
+        Summary = "Get content by ID",
+        Description = "Retrieves a specific library content item (article, video, exercise, audio) by its unique identifier.",
+        OperationId = "GetContentById",
+        Tags = new[] { "Library" }
+    )]
+    [ProducesResponseType(typeof(ContentItemResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> GetContentById(string contentId)
     {
         var userId = GetCurrentUserId();
@@ -55,9 +63,15 @@ public class ContentSearchController : ControllerBase
     }
 
     [HttpPost("search")]
-    [ProducesResponseType(typeof(List<ContentItemResponse>), 200)]
-    [ProducesResponseType(400)]
-    [ProducesResponseType(401)]
+    [SwaggerOperation(
+        Summary = "Search library content",
+        Description = "Searches the library for content items (articles, videos, exercises, audios) based on keywords, content type, and emotional tags.",
+        OperationId = "SearchContent",
+        Tags = new[] { "Library" }
+    )]
+    [ProducesResponseType(typeof(List<ContentItemResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> SearchContent([FromBody] ContentSearchRequest request)
     {
         if (!ModelState.IsValid)

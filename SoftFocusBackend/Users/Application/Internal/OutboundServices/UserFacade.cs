@@ -283,4 +283,35 @@ public class UserFacade : IUserFacade
             return null;
         }
     }
+
+    // ---------------------- PASSWORD RESET ----------------------
+    public async Task<bool> ResetUserPasswordAsync(string userId, string newPassword)
+    {
+        try
+        {
+            _logger.LogDebug("Facade: Resetting password for user: {UserId}", userId);
+
+            var user = await _userRepository.FindByIdAsync(userId);
+            if (user == null)
+            {
+                _logger.LogWarning("Facade: User not found for password reset: {UserId}", userId);
+                return false;
+            }
+
+            // Hash the new password
+            var passwordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+
+            // Update password
+            user.UpdatePassword(passwordHash);
+            _userRepository.Update(user);
+
+            _logger.LogInformation("Facade: Password reset successful for user: {UserId}", userId);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Facade: Error resetting password for user: {UserId}", userId);
+            return false;
+        }
+    }
 }

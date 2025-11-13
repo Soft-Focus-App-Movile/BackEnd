@@ -9,12 +9,14 @@ using SoftFocusBackend.Library.Domain.Model.Queries;
 using SoftFocusBackend.Library.Domain.Model.ValueObjects;
 using SoftFocusBackend.Library.Interfaces.REST.Resources;
 using SoftFocusBackend.Users.Domain.Model.ValueObjects;
+using Swashbuckle.AspNetCore.Annotations;
 
 namespace SoftFocusBackend.Library.Interfaces.REST.Controllers;
 
 [ApiController]
 [Route("api/v1/library/favorites")]
 [Authorize]
+[Produces("application/json")]
 public class FavoritesController : ControllerBase
 {
     private readonly IFavoriteCommandService _favoriteCommand;
@@ -31,13 +33,16 @@ public class FavoritesController : ControllerBase
         _userIntegration = userIntegration;
     }
 
-    /// <summary>
-    /// Obtiene todos los favoritos del usuario autenticado
-    /// </summary>
     [HttpGet]
-    [ProducesResponseType(typeof(object), 200)]
-    [ProducesResponseType(401)]
-    [ProducesResponseType(403)]
+    [SwaggerOperation(
+        Summary = "Get user favorites",
+        Description = "Retrieves all favorite content items for the authenticated user. Supports filtering by content type and emotional tags. Only available for patients.",
+        OperationId = "GetFavorites",
+        Tags = new[] { "Favorites" }
+    )]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> GetFavorites(
         [FromQuery] string? contentType = null,
         [FromQuery] string? emotionFilter = null)
@@ -84,14 +89,17 @@ public class FavoritesController : ControllerBase
         });
     }
 
-    /// <summary>
-    /// Agrega un contenido a favoritos
-    /// </summary>
     [HttpPost]
-    [ProducesResponseType(typeof(object), 201)]
-    [ProducesResponseType(400)]
-    [ProducesResponseType(401)]
-    [ProducesResponseType(403)]
+    [SwaggerOperation(
+        Summary = "Add content to favorites",
+        Description = "Adds a content item (movie, video, audio, place) to the user's favorites list. Only available for patients.",
+        OperationId = "AddFavorite",
+        Tags = new[] { "Favorites" }
+    )]
+    [ProducesResponseType(typeof(object), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> AddFavorite([FromBody] FavoriteRequest request)
     {
         if (!ModelState.IsValid)
@@ -127,14 +135,17 @@ public class FavoritesController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Elimina un contenido de favoritos
-    /// </summary>
     [HttpDelete("{favoriteId}")]
-    [ProducesResponseType(204)]
-    [ProducesResponseType(401)]
-    [ProducesResponseType(403)]
-    [ProducesResponseType(404)]
+    [SwaggerOperation(
+        Summary = "Remove content from favorites",
+        Description = "Removes a content item from the user's favorites list. User must be the owner of the favorite.",
+        OperationId = "RemoveFavorite",
+        Tags = new[] { "Favorites" }
+    )]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> RemoveFavorite(string favoriteId)
     {
         var userId = GetCurrentUserId();

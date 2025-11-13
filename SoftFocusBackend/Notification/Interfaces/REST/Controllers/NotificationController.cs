@@ -10,6 +10,7 @@ using SoftFocusBackend.Notification.Domain.Model.Queries;
 using SoftFocusBackend.Notification.Interfaces.REST.Resources;
 using SoftFocusBackend.Notification.Interfaces.REST.Transform;
 using SoftFocusBackend.Shared.Infrastructure.Persistence.MongoDB.Context;
+using Swashbuckle.AspNetCore.Annotations;
 
 // Alias para evitar conflicto de nombres
 using NotificationAggregate = SoftFocusBackend.Notification.Domain.Model.Aggregates.Notification;
@@ -19,6 +20,7 @@ namespace SoftFocusBackend.Notification.Interfaces.REST.Controllers;
 [Authorize]
 [ApiController]
 [Route("api/v1/notifications")]
+[Produces("application/json")]
 public class NotificationController : ControllerBase
 {
     private readonly SendNotificationCommandService _sendCommandService;
@@ -38,8 +40,15 @@ public class NotificationController : ControllerBase
         _context = context;
     }
 
-    // GET: api/v1/notifications - Obtener todas las notificaciones del usuario actual
     [HttpGet]
+    [SwaggerOperation(
+        Summary = "Get user notifications",
+        Description = "Retrieves paginated notifications for the authenticated user. Supports filtering by status and type.",
+        OperationId = "GetNotifications",
+        Tags = new[] { "Notifications" }
+    )]
+    [ProducesResponseType(typeof(NotificationListResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> GetNotifications(
         [FromQuery] string? status = null,
         [FromQuery] string? type = null,
@@ -71,8 +80,15 @@ public class NotificationController : ControllerBase
         }
     }
 
-    // GET: api/v1/notifications/{userId} - Obtener notificaciones de usuario específico (para admin)
     [HttpGet("{userId}")]
+    [SwaggerOperation(
+        Summary = "Get notifications by user ID",
+        Description = "Retrieves notifications for a specific user. Typically used by admins or for monitoring purposes.",
+        OperationId = "GetNotificationsByUserId",
+        Tags = new[] { "Notifications" }
+    )]
+    [ProducesResponseType(typeof(NotificationListResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> GetNotificationsByUserId(
         string userId,
         [FromQuery] string? status = null,
@@ -105,8 +121,15 @@ public class NotificationController : ControllerBase
         }
     }
 
-    // GET: api/v1/notifications/detail/{notificationId} - Obtener notificación específica
     [HttpGet("detail/{notificationId}")]
+    [SwaggerOperation(
+        Summary = "Get notification by ID",
+        Description = "Retrieves a specific notification by its ID.",
+        OperationId = "GetNotificationById",
+        Tags = new[] { "Notifications" }
+    )]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetNotificationById(string notificationId)
     {
         try
@@ -126,8 +149,15 @@ public class NotificationController : ControllerBase
         }
     }
 
-    // POST: api/v1/notifications/{notificationId}/read - Marcar como leída
     [HttpPost("{notificationId}/read")]
+    [SwaggerOperation(
+        Summary = "Mark notification as read",
+        Description = "Marks a specific notification as read.",
+        OperationId = "MarkAsRead",
+        Tags = new[] { "Notifications" }
+    )]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> MarkAsRead(string notificationId)
     {
         try
@@ -149,8 +179,15 @@ public class NotificationController : ControllerBase
         }
     }
 
-    // POST: api/v1/notifications/read-all - Marcar todas como leídas
     [HttpPost("read-all")]
+    [SwaggerOperation(
+        Summary = "Mark all notifications as read",
+        Description = "Marks all unread notifications for the authenticated user as read.",
+        OperationId = "MarkAllAsRead",
+        Tags = new[] { "Notifications" }
+    )]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> MarkAllAsRead()
     {
         try
@@ -179,8 +216,15 @@ public class NotificationController : ControllerBase
         }
     }
 
-    // DELETE: api/v1/notifications/{notificationId} - Eliminar notificación
     [HttpDelete("{notificationId}")]
+    [SwaggerOperation(
+        Summary = "Delete notification",
+        Description = "Permanently deletes a specific notification.",
+        OperationId = "DeleteNotification",
+        Tags = new[] { "Notifications" }
+    )]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DeleteNotification(string notificationId)
     {
         try
@@ -204,8 +248,15 @@ public class NotificationController : ControllerBase
         }
     }
 
-    // GET: api/v1/notifications/unread-count - Obtener contador de no leídas
     [HttpGet("unread-count")]
+    [SwaggerOperation(
+        Summary = "Get unread notification count",
+        Description = "Returns the total number of unread notifications for the authenticated user.",
+        OperationId = "GetUnreadCount",
+        Tags = new[] { "Notifications" }
+    )]
+    [ProducesResponseType(typeof(UnreadCountResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> GetUnreadCount()
     {
         try
@@ -225,8 +276,16 @@ public class NotificationController : ControllerBase
         }
     }
 
-    // POST: api/v1/notifications - Crear nueva notificación
     [HttpPost]
+    [SwaggerOperation(
+        Summary = "Send notification",
+        Description = "Creates and sends a new notification to a user. The notification can be scheduled and delivered via multiple channels.",
+        OperationId = "SendNotification",
+        Tags = new[] { "Notifications" }
+    )]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> SendNotification([FromBody] SendNotificationRequest request)
     {
         try

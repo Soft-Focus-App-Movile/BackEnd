@@ -7,12 +7,14 @@ using SoftFocusBackend.Notification.Domain.Model.Commands;
 using SoftFocusBackend.Notification.Domain.Model.Queries;
 using SoftFocusBackend.Notification.Interfaces.REST.Resources;
 using SoftFocusBackend.Notification.Interfaces.REST.Transform;
+using Swashbuckle.AspNetCore.Annotations;
 
 namespace SoftFocusBackend.Notification.Interfaces.REST.Controllers;
 
 [Authorize]
 [ApiController]
 [Route("api/v1/preferences")]
+[Produces("application/json")]
 public class PreferenceController : ControllerBase
 {
     private readonly UpdatePreferencesCommandService _updateCommandService;
@@ -26,10 +28,15 @@ public class PreferenceController : ControllerBase
         _queryService = queryService;
     }
 
-    /// <summary>
-    /// Obtiene las preferencias de notificación del usuario autenticado
-    /// </summary>
     [HttpGet]
+    [SwaggerOperation(
+        Summary = "Get notification preferences",
+        Description = "Retrieves all notification preferences for the authenticated user. Creates default preferences if none exist.",
+        OperationId = "GetPreferences",
+        Tags = new[] { "Notification Preferences" }
+    )]
+    [ProducesResponseType(typeof(PreferenceListResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> GetPreferences()
     {
         try
@@ -61,10 +68,16 @@ public class PreferenceController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Actualiza múltiples preferencias de notificación a la vez
-    /// </summary>
     [HttpPut]
+    [SwaggerOperation(
+        Summary = "Update notification preferences",
+        Description = "Updates multiple notification preferences at once for the authenticated user.",
+        OperationId = "UpdatePreferences",
+        Tags = new[] { "Notification Preferences" }
+    )]
+    [ProducesResponseType(typeof(PreferenceListResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> UpdatePreferences([FromBody] UpdatePreferencesListRequest request)
     {
         try
@@ -107,10 +120,15 @@ public class PreferenceController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Restablece las preferencias a sus valores por defecto
-    /// </summary>
     [HttpPost("reset")]
+    [SwaggerOperation(
+        Summary = "Reset notification preferences",
+        Description = "Resets all notification preferences to their default values for the authenticated user.",
+        OperationId = "ResetPreferences",
+        Tags = new[] { "Notification Preferences" }
+    )]
+    [ProducesResponseType(typeof(PreferenceListResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> ResetPreferences()
     {
         try
