@@ -29,14 +29,24 @@ namespace SoftFocusBackend.Therapy.Application.Internal.QueryServices
             var directories = new List<PatientDirectory>();
             foreach (var rel in relationships)
             {
-                // 2. Aplicar filtros (como antes)
-                if (query.StatusFilter.HasValue && rel.Status != query.StatusFilter.Value) continue;
+                // 2. Aplicar filtros
+                // Por defecto, solo mostrar relaciones activas (Status == Active && IsActive == true)
+                if (query.StatusFilter.HasValue)
+                {
+                    // Si se especifica un filtro de estado, usarlo
+                    if (rel.Status != query.StatusFilter.Value) continue;
+                }
+                else
+                {
+                    // Si NO se especifica filtro, mostrar SOLO relaciones activas
+                    if (rel.Status != TherapyStatus.Active || !rel.IsActive) continue;
+                }
 
                 // 3. (NUEVO) Obtener los datos del paciente (User) usando el Facade
                 var patientUser = await _patientFacade.FetchPatientById(rel.PatientId);
 
                 // Si el usuario no se encuentra (por alguna razón), saltamos este registro
-                if (patientUser == null) continue; 
+                if (patientUser == null) continue;
 
                 // 4. (MODIFICADO) Crear el PatientDirectory usando el nuevo constructor
                 // que combina los datos de la relación y del usuario.
