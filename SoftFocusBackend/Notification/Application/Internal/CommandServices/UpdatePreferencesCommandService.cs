@@ -31,10 +31,11 @@ public class UpdatePreferencesCommandService
                 IsEnabled = command.IsEnabled,
                 DeliveryMethod = command.DeliveryMethod ?? "push",
                 CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                UpdatedAt = DateTime.UtcNow,
+                DisabledAt = command.IsEnabled ? null : DateTime.UtcNow // ✅ Si se crea desactivada
             };
 
-            // 🔥 FIX: Convertir schedule si existe
+            // Convertir schedule si existe
             if (command.Schedule != null)
             {
                 var scheduleSettings = ConvertSchedule(command.Schedule);
@@ -48,13 +49,34 @@ public class UpdatePreferencesCommandService
         }
         else
         {
+            // ✅ DETECTAR CAMBIO DE ESTADO (DESACTIVAR/REACTIVAR)
+            if (command.PreviousIsEnabled.HasValue)
+            {
+                bool wasEnabled = command.PreviousIsEnabled.Value;
+                bool isNowEnabled = command.IsEnabled;
+                
+                if (wasEnabled && !isNowEnabled)
+                {
+                    // Se está DESACTIVANDO las notificaciones
+                    preference.DisabledAt = DateTime.UtcNow;
+                    Console.WriteLine($"[PREFERENCES] Usuario {command.UserId} desactivó tipo '{command.NotificationType}' en {preference.DisabledAt:yyyy-MM-dd HH:mm:ss} UTC");
+                }
+                else if (!wasEnabled && isNowEnabled)
+                {
+                    // Se está REACTIVANDO las notificaciones
+                    preference.DisabledAt = null;
+                    Console.WriteLine($"[PREFERENCES] Usuario {command.UserId} reactivó tipo '{command.NotificationType}'");
+                }
+                // Si no hay cambio de estado (ambos true o ambos false), DisabledAt se mantiene igual
+            }
+            
             // Actualizar preferencia existente
             preference.IsEnabled = command.IsEnabled;
             
             if (!string.IsNullOrEmpty(command.DeliveryMethod))
                 preference.DeliveryMethod = command.DeliveryMethod;
             
-            // 🔥 FIX: Actualizar schedule si existe
+            // Actualizar schedule si existe
             if (command.Schedule != null)
             {
                 var scheduleSettings = ConvertSchedule(command.Schedule);
@@ -62,11 +84,6 @@ public class UpdatePreferencesCommandService
                 {
                     preference.Schedule = scheduleSettings;
                 }
-            }
-            else
-            {
-                // Si el schedule es null explícitamente, mantener el existente
-                // Solo eliminarlo si se envía null intencionalmente
             }
 
             preference.UpdatedAt = DateTime.UtcNow;
@@ -91,6 +108,7 @@ public class UpdatePreferencesCommandService
             {
                 existing.IsEnabled = defaultPref.IsEnabled;
                 existing.DeliveryMethod = defaultPref.DeliveryMethod;
+                existing.DisabledAt = null; // ✅ Reset limpia el disabled_at
                 existing.UpdatedAt = DateTime.UtcNow;
                 await _preferenceRepository.UpdateAsync(existing.Id, existing);
                 resultPreferences.Add(existing);
@@ -100,6 +118,7 @@ public class UpdatePreferencesCommandService
                 defaultPref.Id = ObjectId.GenerateNewId().ToString();
                 defaultPref.CreatedAt = DateTime.UtcNow;
                 defaultPref.UpdatedAt = DateTime.UtcNow;
+                defaultPref.DisabledAt = null;
                 await _preferenceRepository.CreateAsync(defaultPref);
                 resultPreferences.Add(defaultPref);
             }
@@ -108,7 +127,6 @@ public class UpdatePreferencesCommandService
         return resultPreferences;
     }
 
-    // 🔥 FIX: Mejorado para manejar múltiples formatos
     private NotificationPreference.ScheduleSettings? ConvertSchedule(object? scheduleObj)
     {
         if (scheduleObj == null) return null;
@@ -142,7 +160,6 @@ public class UpdatePreferencesCommandService
         }
     }
 
-    // 🆕 Helper: Parsear JsonElement a ScheduleSettings
     private NotificationPreference.ScheduleSettings ParseJsonElement(JsonElement jsonElement)
     {
         var startTime = "09:00";
@@ -206,7 +223,6 @@ public class UpdatePreferencesCommandService
         };
     }
 
-    // Helper: Convertir days_of_week (int) a active_days (string)
     private List<string> ConvertDaysOfWeekToActiveDays(List<int> daysOfWeek)
     {
         if (!daysOfWeek.Any())
@@ -239,6 +255,7 @@ public class UpdatePreferencesCommandService
                 NotificationType = "checkin-reminder",
                 IsEnabled = true,
                 DeliveryMethod = "push",
+                DisabledAt = null, // ✅ Default siempre habilitado
                 Schedule = new NotificationPreference.ScheduleSettings
                 {
                     QuietHours = new List<NotificationPreference.ScheduleSettings.QuietHourRange>
@@ -258,14 +275,16 @@ public class UpdatePreferencesCommandService
                 UserId = userId, 
                 NotificationType = "info",
                 IsEnabled = true,
-                DeliveryMethod = "push"
+                DeliveryMethod = "push",
+                DisabledAt = null
             },
             new NotificationPreference 
             { 
                 UserId = userId, 
                 NotificationType = "system-update",
                 IsEnabled = true,
-                DeliveryMethod = "push"
+                DeliveryMethod = "push",
+                DisabledAt = null
             }
         };
     }

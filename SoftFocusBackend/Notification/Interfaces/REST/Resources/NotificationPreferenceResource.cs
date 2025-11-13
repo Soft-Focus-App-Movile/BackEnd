@@ -21,6 +21,9 @@ public record NotificationPreferenceResource
 
     [JsonPropertyName("schedule")]
     public ScheduleResource? Schedule { get; init; }
+    
+    [JsonPropertyName("disabled_at")]
+    public DateTime? DisabledAt { get; init; }
 }
 
 public record ScheduleResource

@@ -47,7 +47,8 @@ public static class NotificationResourceAssembler
             NotificationType = preference.NotificationType,
             IsEnabled = preference.IsEnabled,
             DeliveryMethod = preference.DeliveryMethod,
-            Schedule = scheduleResource
+            Schedule = scheduleResource,
+            DisabledAt = preference.DisabledAt // ✅ NUEVO: Mapear el campo disabled_at
         };
     }
 

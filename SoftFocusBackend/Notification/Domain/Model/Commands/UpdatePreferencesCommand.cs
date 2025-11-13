@@ -5,5 +5,6 @@ public record UpdatePreferencesCommand(
     string NotificationType,
     bool IsEnabled,
     string? DeliveryMethod = null,
-    object? Schedule = null
+    object? Schedule = null,
+    bool? PreviousIsEnabled = null 
 );

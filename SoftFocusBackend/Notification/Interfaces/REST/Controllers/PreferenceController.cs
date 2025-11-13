@@ -89,21 +89,37 @@ public class PreferenceController : ControllerBase
             if (request.Preferences == null || !request.Preferences.Any())
                 return BadRequest(new { error = "No preferences provided" });
 
-            // Actualizar cada preferencia
+            // ✅ PASO 1: Obtener preferencias actuales ANTES de actualizar
+            var currentQuery = new GetPreferencesQuery(userId);
+            var currentPreferences = await _queryService.HandleAsync(currentQuery);
+            
+            // Crear diccionario para acceso rápido al estado anterior
+            var currentDict = currentPreferences.ToDictionary(
+                p => p.NotificationType,
+                p => p.IsEnabled
+            );
+
+            // ✅ PASO 2: Actualizar cada preferencia CON estado anterior
             foreach (var pref in request.Preferences)
             {
+                // Obtener el estado anterior de esta preferencia
+                bool? previousEnabled = currentDict.ContainsKey(pref.NotificationType)
+                    ? currentDict[pref.NotificationType]
+                    : null;
+
                 var command = new UpdatePreferencesCommand(
                     userId,
                     pref.NotificationType,
                     pref.IsEnabled,
                     pref.DeliveryMethod,
-                    pref.Schedule
+                    pref.Schedule,
+                    previousEnabled // ✅ Pasar el estado anterior para detectar cambios
                 );
 
                 await _updateCommandService.HandleAsync(command);
             }
 
-            // Obtener todas las preferencias actualizadas
+            // ✅ PASO 3: Obtener todas las preferencias actualizadas
             var query = new GetPreferencesQuery(userId);
             var allPreferences = await _queryService.HandleAsync(query);
 
