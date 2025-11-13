@@ -22,6 +22,11 @@ public class NotificationPreference : BaseEntity
     [BsonElement("schedule")]
     public ScheduleSettings? Schedule { get; set; }
     
+    // ✅ NUEVO CAMPO: Timestamp de cuando se desactivaron las notificaciones
+    [BsonElement("disabled_at")]
+    [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
+    public DateTime? DisabledAt { get; set; }
+    
     public class ScheduleSettings
     {
         [BsonElement("quiet_hours")]
