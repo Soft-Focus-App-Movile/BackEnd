@@ -63,6 +63,29 @@ namespace SoftFocusBackend.Therapy.Interfaces.REST.Controllers
             var history = await _historyService.Handle(query);
             return Ok(history);
         }
+        
+        [HttpGet("last-received")]
+        [ProducesResponseType(typeof(ChatMessage), 200)]
+        [ProducesResponseType(typeof(object), 404)]
+        public async Task<IActionResult> GetLastReceivedMessage()
+        {
+            var userId = GetCurrentUserId();
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                return Unauthorized(new { error = "User not authenticated" });
+            }
+
+            var query = new GetLastMessageQuery { ReceiverId = userId };
+            var message = await _historyService.Handle(query);
+
+            if (message == null)
+            {
+                return NotFound(new { message = "No messages found" });
+            }
+
+            // Devolvemos el mensaje completo
+            return Ok(message); 
+        }
 
         private string GetCurrentUserId()
         {

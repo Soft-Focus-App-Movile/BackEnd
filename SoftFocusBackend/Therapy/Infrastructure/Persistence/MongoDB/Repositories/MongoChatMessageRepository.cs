@@ -14,9 +14,9 @@ namespace SoftFocusBackend.Therapy.Infrastructure.Persistence.MongoDB.Repositori
             CreateIndexes();
         }
 
-        public Task<ChatMessage?> GetByIdAsync(string id)
+        public async Task<ChatMessage?> GetByIdAsync(string id)
         {
-            throw new NotImplementedException();
+            return await Collection.Find(x => x.Id == id).FirstOrDefaultAsync();
         }
 
         public async Task<IEnumerable<ChatMessage>> GetByRelationshipIdAsync(string relationshipId, int page, int size)
@@ -34,10 +34,20 @@ namespace SoftFocusBackend.Therapy.Infrastructure.Persistence.MongoDB.Repositori
                 .SortByDescending(x => x.Timestamp)
                 .ToListAsync();
         }
-
-        public Task UpdateAsync(ChatMessage message)
+        
+        public async Task<ChatMessage?> GetLastMessageByReceiverIdAsync(string receiverId)
         {
-            throw new NotImplementedException();
+            return await Collection.Find(x => x.ReceiverId == receiverId)
+                .SortByDescending(x => x.Timestamp)
+                .Limit(1)
+                .FirstOrDefaultAsync();
+        }
+
+        public async Task UpdateAsync(ChatMessage message)
+        {
+            message.UpdatedAt = DateTime.UtcNow; // Asegúrate de actualizar la fecha
+            var filter = Builders<ChatMessage>.Filter.Eq(x => x.Id, message.Id);
+            await Collection.ReplaceOneAsync(filter, message);
         }
 
         private void CreateIndexes()
