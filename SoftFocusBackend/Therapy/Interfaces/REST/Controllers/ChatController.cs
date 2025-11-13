@@ -8,12 +8,14 @@ using SoftFocusBackend.Therapy.Domain.Model.Commands;
 using SoftFocusBackend.Therapy.Domain.Model.Queries;
 using SoftFocusBackend.Therapy.Infrastructure.ExternalServices;
 using SoftFocusBackend.Therapy.Interfaces.REST.Resources;
+using Swashbuckle.AspNetCore.Annotations;
 
 namespace SoftFocusBackend.Therapy.Interfaces.REST.Controllers
 {
     [ApiController]
     [Route("api/v1/chat")]
     [Authorize]
+    [Produces("application/json")]
     public class ChatController : ControllerBase
     {
         private readonly SendChatMessageCommandService _sendService;
@@ -31,6 +33,15 @@ namespace SoftFocusBackend.Therapy.Interfaces.REST.Controllers
         }
 
         [HttpPost("send")]
+        [SwaggerOperation(
+            Summary = "Send chat message",
+            Description = "Sends a message between patient and psychologist. Message is encrypted and sent via SignalR for real-time delivery.",
+            OperationId = "SendMessage",
+            Tags = new[] { "Chat" }
+        )]
+        [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(object), StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> SendMessage([FromBody] SendChatMessageRequest request)
         {
             var command = new SendChatMessageCommand
@@ -57,6 +68,14 @@ namespace SoftFocusBackend.Therapy.Interfaces.REST.Controllers
         }
 
         [HttpGet("history")]
+        [SwaggerOperation(
+            Summary = "Get chat history",
+            Description = "Retrieves paginated chat history for a specific therapeutic relationship. Messages are returned in chronological order.",
+            OperationId = "GetHistory",
+            Tags = new[] { "Chat" }
+        )]
+        [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(object), StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> GetHistory(string relationshipId, int page = 1, int size = 20)
         {
             var query = new GetChatHistoryQuery { RelationshipId = relationshipId, Page = page, Size = size };
@@ -65,8 +84,15 @@ namespace SoftFocusBackend.Therapy.Interfaces.REST.Controllers
         }
         
         [HttpGet("last-received")]
-        [ProducesResponseType(typeof(ChatMessage), 200)]
-        [ProducesResponseType(typeof(object), 404)]
+        [SwaggerOperation(
+            Summary = "Get last received message",
+            Description = "Retrieves the most recent message received by the authenticated user. Useful for notifications.",
+            OperationId = "GetLastReceivedMessage",
+            Tags = new[] { "Chat" }
+        )]
+        [ProducesResponseType(typeof(ChatMessage), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(object), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(object), StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> GetLastReceivedMessage()
         {
             var userId = GetCurrentUserId();

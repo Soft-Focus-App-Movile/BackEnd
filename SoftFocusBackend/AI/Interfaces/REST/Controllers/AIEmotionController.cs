@@ -5,6 +5,7 @@ using SoftFocusBackend.AI.Application.Internal.QueryServices;
 using SoftFocusBackend.AI.Domain.Model.Queries;
 using SoftFocusBackend.AI.Interfaces.REST.Resources;
 using SoftFocusBackend.AI.Interfaces.REST.Transform;
+using Swashbuckle.AspNetCore.Annotations;
 
 namespace SoftFocusBackend.AI.Interfaces.REST.Controllers;
 
@@ -33,8 +34,15 @@ public class AIEmotionController : ControllerBase
 
     [HttpPost("analyze")]
     [Consumes("multipart/form-data")]
+    [SwaggerOperation(
+        Summary = "Analyze facial emotion",
+        Description = "Analyzes a user's facial expression from an uploaded image using AI. Returns detected emotion with confidence score. Optionally creates a check-in entry. Subject to usage limits.",
+        OperationId = "AnalyzeFacialEmotion",
+        Tags = new[] { "AI Emotion" }
+    )]
     [ProducesResponseType(typeof(EmotionAnalysisResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(object), StatusCodes.Status413PayloadTooLarge)]
     [ProducesResponseType(typeof(object), StatusCodes.Status429TooManyRequests)]
     [ProducesResponseType(typeof(object), StatusCodes.Status500InternalServerError)]
@@ -116,6 +124,12 @@ public class AIEmotionController : ControllerBase
     }
 
     [HttpGet("usage")]
+    [SwaggerOperation(
+        Summary = "Get AI usage statistics",
+        Description = "Retrieves the current user's AI feature usage statistics including facial analysis and chat limits.",
+        OperationId = "GetAIEmotionUsage",
+        Tags = new[] { "AI Emotion" }
+    )]
     [ProducesResponseType(typeof(AIUsageStatsResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(object), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(object), StatusCodes.Status500InternalServerError)]

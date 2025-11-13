@@ -7,6 +7,7 @@ using SoftFocusBackend.Auth.Interfaces.REST.Transform;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SoftFocusBackend.Auth.Application.ACL.Services;
+using Swashbuckle.AspNetCore.Annotations;
 
 namespace SoftFocusBackend.Auth.Interfaces.REST.Controllers;
 
@@ -86,6 +87,12 @@ public class AuthController : ControllerBase
 
     [HttpPost("register/general")]
     [AllowAnonymous]
+    [SwaggerOperation(
+        Summary = "Register general user (patient)",
+        Description = "Creates a new general user account (patient). This endpoint is for users seeking psychological support.",
+        OperationId = "RegisterGeneralUser",
+        Tags = new[] { "Authentication" }
+    )]
     [ProducesResponseType(typeof(object), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(object), StatusCodes.Status500InternalServerError)]
@@ -137,6 +144,12 @@ public class AuthController : ControllerBase
     [HttpPost("register/psychologist")]
     [AllowAnonymous]
     [Consumes("multipart/form-data")]
+    [SwaggerOperation(
+        Summary = "Register psychologist",
+        Description = "Creates a new psychologist account. Requires professional documentation (license, diploma, DNI). Account will be pending verification by admin.",
+        OperationId = "RegisterPsychologist",
+        Tags = new[] { "Authentication" }
+    )]
     [ProducesResponseType(typeof(object), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(object), StatusCodes.Status500InternalServerError)]
@@ -354,6 +367,12 @@ public class AuthController : ControllerBase
 
     [HttpPost("login")]
     [AllowAnonymous]
+    [SwaggerOperation(
+        Summary = "User login",
+        Description = "Authenticates a user with email and password. Returns JWT access token and user information upon successful authentication.",
+        OperationId = "Login",
+        Tags = new[] { "Authentication" }
+    )]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(object), StatusCodes.Status401Unauthorized)]
@@ -450,6 +469,12 @@ public class AuthController : ControllerBase
 
     [HttpPost("oauth/verify")]
     [AllowAnonymous]
+    [SwaggerOperation(
+        Summary = "Verify OAuth token",
+        Description = "Verifies an OAuth token from Google/Facebook. Returns user information and whether additional registration is needed.",
+        OperationId = "VerifyOAuth",
+        Tags = new[] { "Authentication" }
+    )]
     [ProducesResponseType(typeof(OAuthVerificationResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(object), StatusCodes.Status401Unauthorized)]
@@ -502,6 +527,12 @@ public class AuthController : ControllerBase
     [HttpPost("oauth/complete-registration")]
     [AllowAnonymous]
     [Consumes("multipart/form-data")]
+    [SwaggerOperation(
+        Summary = "Complete OAuth registration",
+        Description = "Completes registration for OAuth users by providing additional required information (user type, professional documents for psychologists).",
+        OperationId = "CompleteOAuthRegistration",
+        Tags = new[] { "Authentication" }
+    )]
     [ProducesResponseType(typeof(object), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(object), StatusCodes.Status500InternalServerError)]
@@ -724,6 +755,12 @@ public class AuthController : ControllerBase
 
     [HttpPost("forgot-password")]
     [AllowAnonymous]
+    [SwaggerOperation(
+        Summary = "Request password reset",
+        Description = "Sends a password reset email to the user if the email is registered. Always returns success for security reasons.",
+        OperationId = "ForgotPassword",
+        Tags = new[] { "Authentication" }
+    )]
     [ProducesResponseType(typeof(PasswordResetResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(object), StatusCodes.Status500InternalServerError)]
@@ -772,6 +809,12 @@ public class AuthController : ControllerBase
 
     [HttpPost("reset-password")]
     [AllowAnonymous]
+    [SwaggerOperation(
+        Summary = "Reset password",
+        Description = "Resets user password using the token received via email. Token must be valid and not expired.",
+        OperationId = "ResetPassword",
+        Tags = new[] { "Authentication" }
+    )]
     [ProducesResponseType(typeof(PasswordResetResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(object), StatusCodes.Status500InternalServerError)]

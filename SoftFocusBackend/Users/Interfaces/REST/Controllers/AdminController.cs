@@ -8,6 +8,7 @@ using SoftFocusBackend.Users.Domain.Model.ValueObjects;
 using SoftFocusBackend.Users.Interfaces.REST.Transform;
 using System.Security.Claims;
 using SoftFocusBackend.Users.Domain.Services;
+using Swashbuckle.AspNetCore.Annotations;
 
 namespace SoftFocusBackend.Users.Interfaces.REST.Controllers;
 
@@ -35,6 +36,12 @@ public class AdminController : ControllerBase
     }
 
     [HttpGet]
+    [SwaggerOperation(
+        Summary = "Get all users (Admin)",
+        Description = "Retrieves a paginated and filterable list of all users in the system. Only accessible by admins.",
+        OperationId = "GetAllUsers",
+        Tags = new[] { "Admin" }
+    )]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(object), StatusCodes.Status401Unauthorized)]
@@ -94,6 +101,12 @@ public class AdminController : ControllerBase
     }
 
     [HttpGet("{id}")]
+    [SwaggerOperation(
+        Summary = "Get user details (Admin)",
+        Description = "Retrieves detailed information about a specific user. Only accessible by admins.",
+        OperationId = "GetUserAdmin",
+        Tags = new[] { "Admin" }
+    )]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(object), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(object), StatusCodes.Status401Unauthorized)]
@@ -126,6 +139,12 @@ public class AdminController : ControllerBase
     }
 
     [HttpPut("{id}/verify")]
+    [SwaggerOperation(
+        Summary = "Verify psychologist (Admin)",
+        Description = "Approves or rejects a psychologist's registration after reviewing their credentials. Only accessible by admins.",
+        OperationId = "VerifyPsychologist",
+        Tags = new[] { "Admin" }
+    )]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(object), StatusCodes.Status404NotFound)]
@@ -176,6 +195,12 @@ public class AdminController : ControllerBase
     }
 
     [HttpPut("{id}/status")]
+    [SwaggerOperation(
+        Summary = "Change user status (Admin)",
+        Description = "Activates or deactivates a user account. Only accessible by admins.",
+        OperationId = "ChangeUserStatus",
+        Tags = new[] { "Admin" }
+    )]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(object), StatusCodes.Status404NotFound)]

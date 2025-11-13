@@ -6,6 +6,7 @@ using SoftFocusBackend.Crisis.Domain.Model.Queries;
 using SoftFocusBackend.Crisis.Domain.Model.ValueObjects;
 using SoftFocusBackend.Crisis.Interfaces.REST.Resources;
 using SoftFocusBackend.Crisis.Interfaces.REST.Transform;
+using Swashbuckle.AspNetCore.Annotations;
 
 namespace SoftFocusBackend.Crisis.Interfaces.REST.Controllers;
 
@@ -33,8 +34,15 @@ public class CrisisAlertController : ControllerBase
     }
 
     [HttpPost("alert")]
+    [SwaggerOperation(
+        Summary = "Create crisis alert",
+        Description = "Creates an emergency crisis alert. Immediately notifies the assigned psychologist and triggers emergency protocols.",
+        OperationId = "CreateCrisisAlert",
+        Tags = new[] { "Crisis Management" }
+    )]
     [ProducesResponseType(typeof(CrisisAlertResource), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> CreateCrisisAlert([FromBody] CreateCrisisAlertResource resource)
     {
@@ -68,7 +76,14 @@ public class CrisisAlertController : ControllerBase
     }
 
     [HttpGet("alerts")]
+    [SwaggerOperation(
+        Summary = "Get psychologist's crisis alerts",
+        Description = "Retrieves crisis alerts assigned to the authenticated psychologist. Supports filtering by severity and status.",
+        OperationId = "GetPsychologistAlerts",
+        Tags = new[] { "Crisis Management" }
+    )]
     [ProducesResponseType(typeof(IEnumerable<CrisisAlertResource>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetPsychologistAlerts(
         [FromQuery] string? severity = null,
@@ -110,8 +125,15 @@ public class CrisisAlertController : ControllerBase
     }
 
     [HttpGet("alerts/{id}")]
+    [SwaggerOperation(
+        Summary = "Get crisis alert by ID",
+        Description = "Retrieves details of a specific crisis alert by its unique identifier.",
+        OperationId = "GetAlertById",
+        Tags = new[] { "Crisis Management" }
+    )]
     [ProducesResponseType(typeof(CrisisAlertResource), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetAlertById(string id)
     {
@@ -137,9 +159,16 @@ public class CrisisAlertController : ControllerBase
     }
 
     [HttpPut("alerts/{id}/status")]
+    [SwaggerOperation(
+        Summary = "Update crisis alert status",
+        Description = "Updates the status of a crisis alert (e.g., Pending, InProgress, Resolved, Closed).",
+        OperationId = "UpdateAlertStatus",
+        Tags = new[] { "Crisis Management" }
+    )]
     [ProducesResponseType(typeof(CrisisAlertResource), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> UpdateAlertStatus(string id, [FromBody] UpdateAlertStatusResource resource)
     {
@@ -165,9 +194,16 @@ public class CrisisAlertController : ControllerBase
     }
 
     [HttpPut("alerts/{id}/severity")]
+    [SwaggerOperation(
+        Summary = "Update crisis alert severity",
+        Description = "Updates the severity level of a crisis alert (e.g., Low, Medium, High, Critical).",
+        OperationId = "UpdateAlertSeverity",
+        Tags = new[] { "Crisis Management" }
+    )]
     [ProducesResponseType(typeof(CrisisAlertResource), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> UpdateAlertSeverity(string id, [FromBody] UpdateAlertSeverityResource resource)
     {
@@ -193,7 +229,14 @@ public class CrisisAlertController : ControllerBase
     }
 
     [HttpGet("alerts/count/pending")]
+    [SwaggerOperation(
+        Summary = "Get pending alert count",
+        Description = "Returns the total number of pending crisis alerts for the authenticated psychologist.",
+        OperationId = "GetPendingAlertCount",
+        Tags = new[] { "Crisis Management" }
+    )]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetPendingAlertCount()
     {

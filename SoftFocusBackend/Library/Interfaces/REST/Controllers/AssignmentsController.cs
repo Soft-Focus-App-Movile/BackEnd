@@ -9,12 +9,14 @@ using SoftFocusBackend.Library.Domain.Model.Queries;
 using SoftFocusBackend.Library.Domain.Model.ValueObjects;
 using SoftFocusBackend.Library.Interfaces.REST.Resources;
 using SoftFocusBackend.Users.Domain.Model.ValueObjects;
+using Swashbuckle.AspNetCore.Annotations;
 
 namespace SoftFocusBackend.Library.Interfaces.REST.Controllers;
 
 [ApiController]
 [Route("api/v1/library/assignments")]
 [Authorize]
+[Produces("application/json")]
 public class AssignmentsController : ControllerBase
 {
     private readonly IAssignmentCommandService _assignmentCommand;
@@ -34,14 +36,17 @@ public class AssignmentsController : ControllerBase
         _userIntegration = userIntegration;
     }
 
-    /// <summary>
-    /// Psicólogo asigna contenido a uno o más pacientes
-    /// </summary>
     [HttpPost]
-    [ProducesResponseType(typeof(object), 201)]
-    [ProducesResponseType(400)]
-    [ProducesResponseType(401)]
-    [ProducesResponseType(403)]
+    [SwaggerOperation(
+        Summary = "Assign content to patients",
+        Description = "Psychologist assigns content (movies, videos, articles, exercises) to one or more patients. Only psychologists can assign content.",
+        OperationId = "AssignContent",
+        Tags = new[] { "Assignments" }
+    )]
+    [ProducesResponseType(typeof(object), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> AssignContent([FromBody] AssignmentRequest request)
     {
         if (!ModelState.IsValid)
@@ -88,13 +93,16 @@ public class AssignmentsController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Usuario general (con relación terapéutica) obtiene su contenido asignado
-    /// </summary>
     [HttpGet("assigned")]
-    [ProducesResponseType(typeof(object), 200)]
-    [ProducesResponseType(401)]
-    [ProducesResponseType(403)]
+    [SwaggerOperation(
+        Summary = "Get assigned content for patient",
+        Description = "Retrieves all content assigned to the authenticated patient by their psychologist. Supports filtering by completion status.",
+        OperationId = "GetAssignedContent",
+        Tags = new[] { "Assignments" }
+    )]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> GetAssignedContent(
         [FromQuery] bool? completed = null)
     {
@@ -131,14 +139,17 @@ public class AssignmentsController : ControllerBase
         });
     }
 
-    /// <summary>
-    /// Paciente marca una asignación como completada
-    /// </summary>
     [HttpPost("assigned/{assignmentId}/complete")]
-    [ProducesResponseType(typeof(object), 200)]
-    [ProducesResponseType(401)]
-    [ProducesResponseType(403)]
-    [ProducesResponseType(404)]
+    [SwaggerOperation(
+        Summary = "Mark assignment as completed",
+        Description = "Patient marks an assigned content item as completed. Only the patient who received the assignment can mark it complete.",
+        OperationId = "CompleteAssignment",
+        Tags = new[] { "Assignments" }
+    )]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> CompleteAssignment(string assignmentId)
     {
         var userId = GetCurrentUserId();
@@ -168,13 +179,16 @@ public class AssignmentsController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Psicólogo obtiene todas las asignaciones que ha creado
-    /// </summary>
     [HttpGet("by-psychologist")]
-    [ProducesResponseType(typeof(object), 200)]
-    [ProducesResponseType(401)]
-    [ProducesResponseType(403)]
+    [SwaggerOperation(
+        Summary = "Get psychologist's assignments",
+        Description = "Retrieves all content assignments created by the authenticated psychologist. Supports filtering by patient ID.",
+        OperationId = "GetAssignmentsByPsychologist",
+        Tags = new[] { "Assignments" }
+    )]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> GetAssignmentsByPsychologist(
         [FromQuery] string? patientId = null)
     {

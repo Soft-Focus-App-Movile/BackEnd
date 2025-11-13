@@ -238,9 +238,8 @@ public class UserContextService : IUserContextService
     {
         try
         {
-            // TODO: Implementar reset password en UserFacade
-            _logger.LogWarning("ResetUserPasswordAsync not implemented yet in UserFacade");
-            return false;
+            _logger.LogInformation("Resetting password for user: {UserId}", userId);
+            return await _userFacade.ResetUserPasswordAsync(userId, newPassword);
         }
         catch (Exception ex)
         {

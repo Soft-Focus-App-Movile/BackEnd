@@ -26,6 +26,7 @@ public interface IUserFacade
     Task<bool> UserExistsAsync(string userId);
     Task<string> GetUserEmailByIdAsync(string userId);
     Task<string> GetUserPhoneByIdAsync(string userId);
+    Task<bool> ResetUserPasswordAsync(string userId, string newPassword);
 }
 
 public record UserStats

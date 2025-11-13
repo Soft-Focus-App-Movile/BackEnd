@@ -9,6 +9,7 @@ using SoftFocusBackend.Users.Interfaces.REST.Resources;
 using SoftFocusBackend.Users.Interfaces.REST.Transform;
 using System.Security.Claims;
 using SoftFocusBackend.Users.Domain.Services;
+using Swashbuckle.AspNetCore.Annotations;
 
 namespace SoftFocusBackend.Users.Interfaces.REST.Controllers;
 
@@ -36,6 +37,12 @@ public class UserController : ControllerBase
 
     [HttpGet("profile")]
     [Authorize]
+    [SwaggerOperation(
+        Summary = "Get user profile",
+        Description = "Retrieves the complete profile information of the authenticated user, including personal details and settings.",
+        OperationId = "GetProfile",
+        Tags = new[] { "User Profile" }
+    )]
     [ProducesResponseType(typeof(UserProfileResource), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(object), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(object), StatusCodes.Status401Unauthorized)]
@@ -74,6 +81,12 @@ public class UserController : ControllerBase
 
     [HttpPut("profile")]
     [Authorize]
+    [SwaggerOperation(
+        Summary = "Update user profile",
+        Description = "Updates the profile information of the authenticated user. Supports profile image upload. Use multipart/form-data.",
+        OperationId = "UpdateProfile",
+        Tags = new[] { "User Profile" }
+    )]
     [ProducesResponseType(typeof(UserProfileResource), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(object), StatusCodes.Status401Unauthorized)]
@@ -140,6 +153,12 @@ public class UserController : ControllerBase
 
     [HttpDelete("profile")]
     [Authorize]
+    [SwaggerOperation(
+        Summary = "Delete user account",
+        Description = "Deletes or deactivates the authenticated user's account. Use hardDelete=true for permanent deletion (not recommended).",
+        OperationId = "DeleteProfile",
+        Tags = new[] { "User Profile" }
+    )]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(object), StatusCodes.Status401Unauthorized)]
@@ -181,6 +200,12 @@ public class UserController : ControllerBase
     }
 
     [HttpGet("psychologists/directory")]
+    [SwaggerOperation(
+        Summary = "Get psychologists directory",
+        Description = "Retrieves a paginated and filterable list of verified psychologists. Supports filtering by specialties, city, rating, and more. Public endpoint.",
+        OperationId = "GetPsychologistsDirectory",
+        Tags = new[] { "Psychologists" }
+    )]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> GetPsychologistsDirectory(
@@ -256,6 +281,12 @@ public class UserController : ControllerBase
     }
 
     [HttpGet("psychologists/{id}")]
+    [SwaggerOperation(
+        Summary = "Get psychologist details",
+        Description = "Retrieves detailed information about a specific psychologist by ID. Only shows verified and active psychologist profiles. Public endpoint.",
+        OperationId = "GetPsychologistById",
+        Tags = new[] { "Psychologists" }
+    )]
     [ProducesResponseType(typeof(PsychologistDirectoryResource), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(object), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetPsychologistById(string id)
