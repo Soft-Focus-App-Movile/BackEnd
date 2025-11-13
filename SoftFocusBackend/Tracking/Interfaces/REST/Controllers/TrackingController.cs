@@ -240,6 +240,84 @@ public class TrackingController : ControllerBase
                 CheckInResourceAssembler.ToErrorResponse("An error occurred while retrieving check-ins"));
         }
     }
+    
+    /// <summary>
+    /// Retrieves user's check-in history with optional date filtering
+    /// </summary>
+    /// <param name="userId">The unique identifier of the patient</param>
+    /// <param name="startDate">Optional start date for filtering (YYYY-MM-DD format)</param>
+    /// <param name="endDate">Optional end date for filtering (YYYY-MM-DD format)</param>
+    /// <param name="pageNumber">Page number for pagination (default: 1)</param>
+    /// <param name="pageSize">Number of items per page (default: 20, max: 100)</param>
+    /// <returns>Paginated list of user's check-ins</returns>
+    /// <response code="200">Check-ins retrieved successfully</response>
+    /// <response code="401">User not authenticated</response>
+    [HttpGet("check-ins/patient/{userId}")] 
+    [SwaggerOperation(
+        Summary = "Get psychologist patient's check-in history", 
+        Description = "Retrieves the authenticated psychologist patient's check-in history with optional date range filtering and pagination support.",
+        OperationId = "GetUserCheckInsById",
+        Tags = new[] { "Check-ins" }
+    )]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetUserCheckInsById(
+        [FromRoute] string userId,
+        [FromQuery] DateTime? startDate = null,
+        [FromQuery] DateTime? endDate = null,
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 20)
+    {
+        try
+        {
+            // 1. Validar al usuario que hace la llamada (el psicólogo)
+            var callerId = GetCurrentUserId();
+            if (string.IsNullOrWhiteSpace(callerId))
+            {
+                // CORRECCIÓN: Usar CheckInResourceAssembler
+                return Unauthorized(CheckInResourceAssembler.ToErrorResponse("Invalid user session"));
+            }
+
+            // 2. Verificar que el llamante sea un psicólogo
+            var callerUserType = await _userIntegrationService.GetUserTypeAsync(callerId);
+            if (callerUserType != UserType.Psychologist)
+            {
+                _logger.LogWarning("Forbidden: Non-psychologist user {CallerId} attempted to access dashboard for {UserId}", callerId, userId);
+                return Forbid("Only psychologists can access patient dashboards.");
+            }
+            
+            // 3. Validar que el 'userId' (paciente) exista
+            try
+            {
+                // CORRECCIÓN: Eliminada la comprobación 'UserType.Unknown'.
+                // Simplemente llamamos al servicio. Si no existe, el 'catch' lo manejará.
+                await _userIntegrationService.GetUserTypeAsync(userId);
+            }
+            catch (Exception ex)
+            {
+                // Asumimos que una excepción aquí significa que el usuario no fue encontrado.
+                _logger.LogWarning(ex, "Failed to retrieve patient type for {UserId}, assuming not found.", userId);
+                // CORRECCIÓN: Usar CheckInResourceAssembler
+                return NotFound(CheckInResourceAssembler.ToErrorResponse("Patient not found"));
+            }
+    
+            pageSize = Math.Min(pageSize, 100); // Limit page size
+            _logger.LogInformation("Get user check-ins request for user: {UserId}, Page: {PageNumber}, Size: {PageSize}", userId, pageNumber, pageSize);
+    
+            var query = new GetUserCheckInsQuery(userId, startDate, endDate, pageNumber, pageSize);
+            var checkIns = await _checkInQueryService.HandleGetUserCheckInsAsync(query);
+    
+            var resources = CheckInResourceAssembler.ToResourceList(checkIns);
+            return Ok(TrackingResourceAssembler.ToPaginatedResponse(resources, pageNumber, pageSize, checkIns.Count));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting user check-ins");
+            return StatusCode(StatusCodes.Status500InternalServerError, CheckInResourceAssembler.ToErrorResponse("An error occurred while retrieving check-ins"));
+        }
+    }
 
     /// <summary>
     /// Creates an emotional calendar entry for a specific date
