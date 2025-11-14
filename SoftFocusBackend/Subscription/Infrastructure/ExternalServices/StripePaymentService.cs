@@ -69,7 +69,8 @@ public class StripePaymentService : IStripePaymentService
                     }
                 },
                 Mode = "subscription",
-                SuccessUrl = successUrl,
+                // CRITICAL FIX: Add {CHECKOUT_SESSION_ID} placeholder so Stripe includes session_id in redirect
+                SuccessUrl = successUrl + "?session_id={CHECKOUT_SESSION_ID}",
                 CancelUrl = cancelUrl,
                 BillingAddressCollection = "auto",
                 AllowPromotionCodes = true
