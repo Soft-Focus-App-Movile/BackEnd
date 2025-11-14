@@ -70,6 +70,12 @@ public class SubscriptionCommandService : ISubscriptionCommandService
             customerId = await _stripePaymentService.CreateCustomerAsync(
                 user.Email,
                 user.FullName);
+
+            // CRITICAL FIX: Save the customerId to the subscription before creating checkout
+            subscription.AssociateStripeCustomer(customerId);
+            await _subscriptionRepository.UpdateAsync(subscription);
+            _logger.LogInformation("Saved Stripe Customer ID {CustomerId} for user: {UserId}",
+                customerId, userId);
         }
         else
         {
