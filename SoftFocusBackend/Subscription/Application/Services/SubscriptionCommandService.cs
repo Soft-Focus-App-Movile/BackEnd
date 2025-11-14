@@ -100,22 +100,36 @@ public class SubscriptionCommandService : ISubscriptionCommandService
 
     public async Task<SubscriptionDto> HandleSuccessfulCheckoutAsync(string sessionId)
     {
+        _logger.LogInformation("Processing checkout session: {SessionId}", sessionId);
+
         // Get session from Stripe to get subscription details
+        // CRITICAL FIX: Expand both "subscription" AND "customer" to access customer data
         var sessionService = new SessionService();
         var session = await sessionService.GetAsync(sessionId,
-            new SessionGetOptions { Expand = new List<string> { "subscription" } });
+            new SessionGetOptions { Expand = new List<string> { "subscription", "customer" } });
 
         if (session.Subscription == null)
         {
             throw new InvalidOperationException("No subscription found in checkout session");
         }
 
-        var stripeSubscription = session.Subscription as StripeSubscription;
+        // CRITICAL FIX: Validate subscription type before using it
+        if (session.Subscription is not StripeSubscription stripeSubscription)
+        {
+            throw new InvalidOperationException("Invalid subscription type in checkout session");
+        }
+
+        // CRITICAL FIX: Get customer ID safely (fallback to CustomerId string if Customer object is null)
+        var customerId = session.Customer?.Id ?? session.CustomerId;
+        _logger.LogInformation("Customer ID from session: {CustomerId}", customerId);
 
         // Find subscription by customer ID
         var subscriptions = await _subscriptionRepository.GetAllAsync();
-        var subscription = subscriptions.FirstOrDefault(s => s.StripeCustomerId == session.Customer.Id)
-            ?? throw new InvalidOperationException("Subscription not found for customer");
+        var subscription = subscriptions.FirstOrDefault(s => s.StripeCustomerId == customerId)
+            ?? throw new InvalidOperationException($"Subscription not found for customer: {customerId}");
+
+        _logger.LogInformation("Found subscription: {SubscriptionId} for user: {UserId}",
+            subscription.Id, subscription.UserId);
 
         // Upgrade to Pro
         // Use current time and monthly period (Stripe will send accurate dates via webhook)
@@ -123,7 +137,7 @@ public class SubscriptionCommandService : ISubscriptionCommandService
         var periodEnd = DateTime.UtcNow.AddMonths(1);
 
         subscription.UpgradeToPro(
-            session.Customer.Id,
+            customerId,
             stripeSubscription.Id,
             periodStart,
             periodEnd);
