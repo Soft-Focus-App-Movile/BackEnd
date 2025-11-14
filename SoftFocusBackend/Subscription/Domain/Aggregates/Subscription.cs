@@ -140,6 +140,18 @@ public class Subscription : BaseEntity
     }
 
     /// <summary>
+    /// Associate Stripe Customer ID with subscription
+    /// </summary>
+    public void AssociateStripeCustomer(string stripeCustomerId)
+    {
+        if (string.IsNullOrEmpty(stripeCustomerId))
+            throw new ArgumentNullException(nameof(stripeCustomerId));
+
+        StripeCustomerId = stripeCustomerId;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>
     /// Mark subscription for cancellation at period end
     /// </summary>
     public void CancelAtEndOfPeriod()
