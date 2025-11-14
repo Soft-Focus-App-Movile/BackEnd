@@ -320,4 +320,46 @@ public class SubscriptionController : ControllerBase
             return StatusCode(500, new { message = "Internal server error" });
         }
     }
+
+    [HttpPost("checkout/success")]
+    [SwaggerOperation(
+        Summary = "Handle successful checkout",
+        Description = "Processes a successful Stripe checkout session and upgrades the subscription to PRO",
+        OperationId = "HandleCheckoutSuccess",
+        Tags = new[] { "Subscriptions" }
+    )]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> HandleCheckoutSuccess([FromQuery] string sessionId)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(sessionId))
+            {
+                return BadRequest(new { message = "Session ID is required" });
+            }
+
+            var userId = User.FindFirstValue("user_id")
+                ?? throw new UnauthorizedAccessException("User ID not found in token");
+
+            var subscription = await _commandService.HandleSuccessfulCheckoutAsync(sessionId);
+
+            if (subscription == null)
+            {
+                return NotFound(new { message = "Checkout session not found or already processed" });
+            }
+
+            _logger.LogInformation("Successfully processed checkout for user: {UserId}, session: {SessionId}", userId, sessionId);
+
+            return Ok(subscription);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error handling checkout success for session {SessionId}", sessionId);
+            return StatusCode(500, new { message = "An error occurred while processing the checkout" });
+        }
+    }
 }
