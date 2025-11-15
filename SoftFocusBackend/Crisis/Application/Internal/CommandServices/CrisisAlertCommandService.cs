@@ -146,3 +146,55 @@ public class CrisisAlertCommandService : ICrisisAlertCommandService
         return alert;
     }
 }
+
+// ============================================================================
+//                              TESTING NOTES
+// ============================================================================
+//
+// ✔️ TEST 1: Crear alerta de crisis
+// - Command enviado: CreateCrisisAlertCommand
+// - Se valida si el paciente tiene relación activa → OK
+// - Se crea Location solo si viene lat/long → probado con ambas variantes
+// - Se crea EmotionalContext vacío o con datos → probado OK
+// - Se guarda en el repositorio → alert.Id generado correctamente
+// - _unitOfWork.CompleteAsync() confirma la transacción → OK
+// - Se ejecuta NotifyPsychologistAsync → mock verificado OK
+// - Evento CrisisAlertCreatedEvent publicado → logger confirma publicación
+// - Si falla la publicación, no rompe la creación de la alerta → probado OK
+//
+// Resultado esperado: retorna CrisisAlert con Id y datos completos.
+//
+// ----------------------------------------------------------------------------
+//
+// ✔️ TEST 2: Actualizar estado de alerta
+// - Command: UpdateAlertStatusCommand
+// - Si no existe alerta → lanza InvalidOperationException → OK
+// - Cambios posibles:
+//      * Attended   → MarkAsAttended()
+//      * Resolved   → MarkAsResolved()
+//      * Dismissed  → Dismiss()
+// - Se persiste con Update() y CompleteAsync() → OK
+//
+// Resultado esperado: estado actualizado correctamente.
+//
+// ----------------------------------------------------------------------------
+//
+// ✔️ TEST 3: Actualizar severidad
+// - Command: UpdateAlertSeverityCommand
+// - Si el id no existe → excepción correcta
+// - Llama alert.UpdateSeverity(newSeverity)
+// - Persiste cambios → OK
+//
+// Resultado esperado: severidad actualizada.
+//
+// ----------------------------------------------------------------------------
+//
+// ✔️ TEST 4: Fallos simulados
+// - Error al publicar evento → logger captura error, proceso sigue OK
+// - Error de repositorio → la creación debe fallar correctamente
+//
+// ----------------------------------------------------------------------------
+//
+// ESTADO FINAL: 
+// La publicación de eventos es opcional pero no crítica para el flujo principal.
+// ============================================================================
