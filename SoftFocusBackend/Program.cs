@@ -93,6 +93,7 @@ using SoftFocusBackend.Therapy.Domain.Model.Events;
 using SoftFocusBackend.Library.Domain.Model.Events;
 using SoftFocusBackend.Tracking.Domain.Model.Events;
 using SoftFocusBackend.Crisis.Domain.Model.Events;
+using SoftFocusBackend.Therapy.Application.Internal.EventHandlers;
 using SoftFocusBackend.Therapy.Infrastructure.ExternalServices;
 
 Env.Load();
@@ -373,6 +374,7 @@ builder.Services.AddScoped<SoftFocusBackend.Therapy.Application.Internal.QuerySe
 builder.Services.AddScoped<SoftFocusBackend.Therapy.Application.Internal.OutboundServices.IPatientFacade, SoftFocusBackend.Therapy.Infrastructure.ACL.Services.PatientFacade>();
 
 builder.Services.AddScoped<SignalRChatService>();
+builder.Services.AddScoped<SignalRMessageDeliveryHandler>();
 
 // Add services to the container
 builder.Services.AddSignalR(); // Add SignalR services
@@ -531,7 +533,15 @@ using (var scope = app.Services.CreateScope())
 {
     var serviceProvider = scope.ServiceProvider;
 
-    //  Therapy Events
+    //  Therapy Events ===================================================================================
+    //  == SignalR Delivery ==
+    eventBus.Subscribe<MessageSentEvent>(async evt =>
+    {
+        using var handlerScope = app.Services.CreateScope();
+        var handler = handlerScope.ServiceProvider.GetRequiredService<SignalRMessageDeliveryHandler>();
+        await handler.HandleAsync(evt);
+    });
+    //  == Push Notifications ==
     eventBus.Subscribe<MessageSentEvent>(async evt =>
     {
         using var handlerScope = app.Services.CreateScope();
@@ -547,8 +557,10 @@ using (var scope = app.Services.CreateScope())
             "Therapeutic relationship established: {RelationshipId} between {PsychologistId} and {PatientId}",
             evt.RelationshipId, evt.PsychologistId, evt.PatientId);
     });
+    
+    
 
-    //  Library Events
+    //  Library Events ===================================================================================
     eventBus.Subscribe<ContentAssignedEvent>(async evt =>
     {
         using var handlerScope = app.Services.CreateScope();
@@ -570,7 +582,7 @@ using (var scope = app.Services.CreateScope())
         await handler.HandleAsync(evt);
     });
 
-    // ✅ Tracking Events
+    // ✅ Tracking Events ===================================================================================
     eventBus.Subscribe<CheckInCompletedEvent>(async evt =>
     {
         using var handlerScope = app.Services.CreateScope();
@@ -586,7 +598,7 @@ using (var scope = app.Services.CreateScope())
             evt.PatientId, evt.Reason);
     });
 
-    // ✅ Crisis Events
+    // ✅ Crisis Events ===================================================================================
     eventBus.Subscribe<CrisisAlertCreatedEvent>(async evt =>
     {
         using var handlerScope = app.Services.CreateScope();
