@@ -859,4 +859,5 @@ public class FileUploadOperationFilter : Swashbuckle.AspNetCore.SwaggerGen.IOper
         };
     }
 }
-public partial class Program { }    
+
+public partial class Program { }
