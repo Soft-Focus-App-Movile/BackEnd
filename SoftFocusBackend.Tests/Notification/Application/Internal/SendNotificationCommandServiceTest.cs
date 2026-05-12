@@ -30,7 +30,6 @@ public class SendNotificationCommandServiceTest
         );
 
         // 3. Preparamos el comando de entrada
-        // (Nota: si tu record SendNotificationCommand pide los datos en otro orden, ajústalos aquí)
         var command = new SendNotificationCommand(
             UserId: "user_12345",
             Type: "THERAPY_REMINDER",

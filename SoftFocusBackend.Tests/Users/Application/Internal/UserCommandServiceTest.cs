@@ -18,7 +18,7 @@ public class UserCommandServiceTest
     [Fact]
     public async Task HandleCreateUserAsync_WhenValidGeneralUser_ShouldReturnUser()
     {
-        // Arrange (Preparación)
+        // Arrange 
         // 1. Creamos "Mocks" (simuladores) de todas las dependencias
         var mockUserRepository = new Mock<IUserRepository>();
         var mockUserDomainService = new Mock<IUserDomainService>();
@@ -38,7 +38,6 @@ public class UserCommandServiceTest
         );
 
         // 3. Preparamos los datos de entrada (El comando)
-        // Nota: Ajusta los parámetros según cómo esté estructurado tu Record/Class CreateUserCommand
         var command = new CreateUserCommand(
             email: "giancarlo@test.com",
             passwordHash: "hashed123",
