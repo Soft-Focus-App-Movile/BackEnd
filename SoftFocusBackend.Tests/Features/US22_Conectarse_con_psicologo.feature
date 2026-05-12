@@ -13,4 +13,4 @@
     Examples:
       | codigo_ingresado | estado | accion_resultante                                                 |
       | 12342490305      | éxito  | se establece la vinculación y aparece el perfil del terapeuta     |
-      | 000000001999     | error  | mensaje de error y opción para reintentar o contactar soporte     |
+      | 00000000199      | error  | mensaje de error y opción para reintentar o contactar soporte     |
