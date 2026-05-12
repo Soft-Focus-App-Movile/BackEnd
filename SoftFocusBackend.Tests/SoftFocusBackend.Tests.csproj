@@ -27,8 +27,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Helpers\" />
-    <Folder Include="IntegrationTests\" />
     <Folder Include="UnitTests\Crisis\" />
   </ItemGroup>
 
