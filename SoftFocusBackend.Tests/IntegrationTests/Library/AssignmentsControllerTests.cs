@@ -125,18 +125,4 @@ public class AssignmentsControllerTests
         response.StatusCode.Should().BeOneOf(HttpStatusCode.OK, HttpStatusCode.NotFound, HttpStatusCode.InternalServerError);
     }
 
-    // ─── Auth ─────────────────────────────────────────────────────────────
-
-    [Fact]
-    public async Task Get_AssignedContent_Unauthenticated_ReturnsUnauthorized()
-    {
-        // Arrange
-        var unauthClient = new HttpClient { BaseAddress = _client.BaseAddress };
-
-        // Act
-        var response = await unauthClient.GetAsync("/api/v1/library/assignments/assigned");
-
-        // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-    }
 }

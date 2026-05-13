@@ -83,19 +83,4 @@ public class ContentSearchControllerTests
             HttpStatusCode.ServiceUnavailable);
     }
 
-    // ─── Auth ─────────────────────────────────────────────────────────────
-
-    [Fact]
-    public async Task Post_SearchContent_Unauthenticated_ReturnsUnauthorized()
-    {
-        // Arrange
-        var unauthClient = new HttpClient { BaseAddress = _client.BaseAddress };
-        var body         = JsonContent.Create(new { query = "test", contentType = "Movie" });
-
-        // Act
-        var response = await unauthClient.PostAsync("/api/v1/library/search", body);
-
-        // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-    }
 }

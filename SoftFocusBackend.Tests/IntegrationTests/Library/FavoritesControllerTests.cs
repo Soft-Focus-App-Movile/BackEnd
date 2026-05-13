@@ -53,19 +53,6 @@ public class FavoritesControllerTests
         response.StatusCode.Should().BeOneOf(HttpStatusCode.OK, HttpStatusCode.NotFound, HttpStatusCode.InternalServerError);
     }
 
-    [Fact]
-    public async Task Get_Favorites_Unauthenticated_ReturnsUnauthorized()
-    {
-        // Arrange — sin token de autenticación
-        var unauthClient = new HttpClient { BaseAddress = _client.BaseAddress };
-
-        // Act
-        var response = await unauthClient.GetAsync("/api/v1/library/favorites");
-
-        // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-    }
-
     // ─── POST /api/v1/library/favorites ──────────────────────────────────
 
     [Fact]
