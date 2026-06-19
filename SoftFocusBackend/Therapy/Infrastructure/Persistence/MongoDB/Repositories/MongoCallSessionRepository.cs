@@ -2,6 +2,7 @@ using MongoDB.Driver;
 using SoftFocusBackend.Shared.Infrastructure.Persistence.MongoDB.Context;
 using SoftFocusBackend.Shared.Infrastructure.Persistence.MongoDB.Repositories;
 using SoftFocusBackend.Therapy.Domain.Model.Aggregates;
+using SoftFocusBackend.Therapy.Domain.Model.ValueObjects;
 using SoftFocusBackend.Therapy.Domain.Repositories;
 
 namespace SoftFocusBackend.Therapy.Infrastructure.Persistence.MongoDB.Repositories
@@ -37,6 +38,16 @@ namespace SoftFocusBackend.Therapy.Infrastructure.Persistence.MongoDB.Repositori
                 .Skip((page - 1) * size)
                 .Limit(size)
                 .ToListAsync();
+        }
+
+        public async Task<IEnumerable<CallSession>> GetActiveByUserIdAsync(string userId)
+        {
+            var builder = Builders<CallSession>.Filter;
+            var filter = builder.And(
+                builder.ElemMatch(c => c.Participants, p => p.UserId == userId),
+                builder.In(c => c.Status, new[] { CallStatus.Ringing, CallStatus.Ongoing }));
+
+            return await Collection.Find(filter).ToListAsync();
         }
 
         private void CreateIndexes()

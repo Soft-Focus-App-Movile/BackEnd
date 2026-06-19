@@ -10,5 +10,8 @@ namespace SoftFocusBackend.Therapy.Domain.Repositories
 
         /// <summary>Calls where the given user was the caller or an invitee, newest first.</summary>
         Task<IEnumerable<CallSession>> GetByParticipantIdAsync(string userId, int page, int size);
+
+        /// <summary>Active calls (Ringing or Ongoing) the user is currently part of.</summary>
+        Task<IEnumerable<CallSession>> GetActiveByUserIdAsync(string userId);
     }
 }
