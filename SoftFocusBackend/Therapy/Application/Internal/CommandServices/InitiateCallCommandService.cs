@@ -41,6 +41,11 @@ namespace SoftFocusBackend.Therapy.Application.Internal.CommandServices
             var caller = await _patientFacade.FetchUserById(command.CallerId)
                 ?? throw new InvalidOperationException("Caller not found.");
 
+            // Prevent the same user from starting more than one call at a time.
+            var activeCalls = await _callRepository.GetActiveByUserIdAsync(command.CallerId);
+            if (activeCalls.Any())
+                throw new InvalidOperationException("You already have a call in progress.");
+
             var isPsychologist = caller.IsPsychologist();
             var callerRole = isPsychologist ? "Psychologist" : "Patient";
 
