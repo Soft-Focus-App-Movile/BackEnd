@@ -172,6 +172,7 @@ builder.Services.Configure<GoogleOAuthSettings>(builder.Configuration.GetSection
 builder.Services.Configure<FacebookOAuthSettings>(builder.Configuration.GetSection("FacebookOAuthSettings"));
 builder.Services.Configure<GeminiSettings>(builder.Configuration.GetSection("GeminiSettings"));
 builder.Services.Configure<HuggingFaceSettings>(builder.Configuration.GetSection("HuggingFaceSettings"));
+builder.Services.Configure<SoftFocusBackend.Therapy.Infrastructure.ExternalServices.Agora.Configuration.AgoraSettings>(builder.Configuration.GetSection("AgoraSettings"));
 builder.Services.AddHttpClient<GoogleOAuthService>();
 builder.Services.AddHttpClient<FacebookOAuthService>();
 builder.Services.AddScoped<GoogleOAuthService>();
@@ -183,6 +184,8 @@ builder.Configuration["FacebookOAuthSettings:AppId"] = Environment.GetEnvironmen
 builder.Configuration["FacebookOAuthSettings:AppSecret"] = Environment.GetEnvironmentVariable("FacebookOAuthSettings__AppSecret");
 builder.Configuration["GeminiSettings:ApiKey"] = Environment.GetEnvironmentVariable("GeminiSettings__ApiKey");
 builder.Configuration["HuggingFaceSettings:ApiToken"] = Environment.GetEnvironmentVariable("HuggingFaceSettings__ApiToken");
+builder.Configuration["AgoraSettings:AppId"] = Environment.GetEnvironmentVariable("AgoraSettings__AppId") ?? builder.Configuration["AgoraSettings:AppId"];
+builder.Configuration["AgoraSettings:AppCertificate"] = Environment.GetEnvironmentVariable("AgoraSettings__AppCertificate") ?? builder.Configuration["AgoraSettings:AppCertificate"];
 builder.Configuration["TMDB:ApiKey"]= Environment.GetEnvironmentVariable("TMDB__ApiKey");
 builder.Configuration["Spotify:ClientId"] = Environment.GetEnvironmentVariable("Spotify__ClientId");
 builder.Configuration["Spotify:ClientSecret"] = Environment.GetEnvironmentVariable("Spotify__ClientSecret");
@@ -375,6 +378,17 @@ builder.Services.AddScoped<SoftFocusBackend.Therapy.Application.Internal.Outboun
 
 builder.Services.AddScoped<SignalRChatService>();
 builder.Services.AddScoped<SignalRMessageDeliveryHandler>();
+
+// Therapy - Calls (Agora.io)
+builder.Services.AddScoped<SoftFocusBackend.Therapy.Domain.Repositories.ICallSessionRepository,
+    SoftFocusBackend.Therapy.Infrastructure.Persistence.MongoDB.Repositories.MongoCallSessionRepository>();
+builder.Services.AddScoped<SoftFocusBackend.Therapy.Domain.Services.IAgoraTokenService,
+    SoftFocusBackend.Therapy.Infrastructure.ExternalServices.Agora.Services.AgoraTokenService>();
+builder.Services.AddScoped<SignalRCallService>();
+builder.Services.AddScoped<SoftFocusBackend.Therapy.Application.Internal.CommandServices.InitiateCallCommandService>();
+builder.Services.AddScoped<SoftFocusBackend.Therapy.Application.Internal.CommandServices.RespondToCallCommandService>();
+builder.Services.AddScoped<SoftFocusBackend.Therapy.Application.Internal.CommandServices.EndCallCommandService>();
+builder.Services.AddScoped<SoftFocusBackend.Therapy.Application.Internal.QueryServices.CallQueryService>();
 
 // Add services to the container
 builder.Services.AddSignalR(); // Add SignalR services
@@ -658,6 +672,7 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.MapHub<ChatHub>("/chatHub");
+app.MapHub<SoftFocusBackend.Therapy.Interfaces.REST.Hubs.CallHub>("/callHub");
 app.MapHub<SoftFocusBackend.Crisis.Interfaces.Hubs.CrisisHub>("/crisisHub");
 
 app.Run();

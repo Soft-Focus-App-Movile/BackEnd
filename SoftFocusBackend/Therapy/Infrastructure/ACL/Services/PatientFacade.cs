@@ -20,5 +20,10 @@ namespace SoftFocusBackend.Therapy.Infrastructure.ACL.Services
             // ...llamando al método real del Bounded Context de Users
             return await _usersFacade.GetUserByIdAsync(patientId);
         }
+
+        public async Task<User?> FetchUserById(string userId)
+        {
+            return await _usersFacade.GetUserByIdAsync(userId);
+        }
     }
 }
