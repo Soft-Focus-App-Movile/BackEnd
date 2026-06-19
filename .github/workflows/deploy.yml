@@ -84,6 +84,10 @@ jobs:
             StripeSettings__WebhookSecret=${{ secrets.STRIPE_WEBHOOKSECRET }}
             StripeSettings__ProPriceId=${{ secrets.STRIPE_PROPRICEID }}
 
+            # Agora.io (Therapy - Calls)
+            AgoraSettings__AppId=${{ secrets.AGORA_APP_ID }}
+            AgoraSettings__AppCertificate=${{ secrets.AGORA_APP_CERTIFICATE }}
+
             # Production Environment
             ASPNETCORE_ENVIRONMENT=Production
             EOF
