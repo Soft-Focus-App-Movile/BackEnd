@@ -8,4 +8,5 @@ public interface IEmotionalCalendarQueryService
     Task<EmotionalCalendar?> HandleGetEmotionalCalendarEntryByDateAsync(GetEmotionalCalendarEntryByDateQuery query);
     Task<List<EmotionalCalendar>> HandleGetUserEmotionalCalendarAsync(GetUserEmotionalCalendarQuery query);
     Task<List<EmotionalCalendar>> HandleGetEmotionalCalendarByDateRangeAsync(GetEmotionalCalendarByDateRangeQuery query);
+    Task<List<EmotionalCalendar>> HandleGetUserEntriesByDateAsync(string userId, DateTime date);
 }

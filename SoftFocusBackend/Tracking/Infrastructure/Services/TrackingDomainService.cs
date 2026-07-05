@@ -84,8 +84,9 @@ public class TrackingDomainService : ITrackingDomainService
         return checkIn;
     }
 
-    public async Task<EmotionalCalendar> CreateEmotionalCalendarEntryAsync(string userId, DateTime date, 
-        string emotionalEmoji, int moodLevel, List<string> emotionalTags)
+    public async Task<EmotionalCalendar> CreateEmotionalCalendarEntryAsync(string userId, DateTime timestamp,
+        string emotionalEmoji, int moodLevel, List<string> emotionalTags,
+        string content = "", int sessionDurationSeconds = 0, string entryType = "spontaneous")
     {
         // Validate user exists and is active through ACL
         if (!await _userValidationService.ValidateUserExistsAsync(userId))
@@ -98,13 +99,21 @@ public class TrackingDomainService : ITrackingDomainService
             throw new ArgumentException($"User is not active: {userId}");
         }
 
+        var normalizedTimestamp = timestamp.Kind == DateTimeKind.Utc
+            ? timestamp
+            : timestamp.ToUniversalTime();
+
         var entry = new EmotionalCalendar
         {
             UserId = userId,
-            Date = DateTime.SpecifyKind(date.Date, DateTimeKind.Utc),
+            Timestamp = normalizedTimestamp,
+            Date = DateTime.SpecifyKind(normalizedTimestamp.Date, DateTimeKind.Utc),
             EmotionalEmoji = emotionalEmoji,
             MoodLevel = moodLevel,
-            EmotionalTags = emotionalTags ?? new List<string>()
+            EmotionalTags = emotionalTags ?? new List<string>(),
+            Content = content ?? string.Empty,
+            SessionDurationSeconds = sessionDurationSeconds,
+            EntryType = entryType
         };
 
         entry.ValidateForCreation();

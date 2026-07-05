@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace SoftFocusBackend.Tracking.Interfaces.REST.Resources;
 
-public record CreateEmotionalCalendarEntryResource
+public record CreateQuickEmotionalEntryResource
 {
     [Required]
     public DateTime Timestamp { get; init; }
@@ -15,14 +15,9 @@ public record CreateEmotionalCalendarEntryResource
     [Range(1, 10, ErrorMessage = "Mood level must be between 1 and 10")]
     public int MoodLevel { get; init; }
 
-    public List<string> EmotionalTags { get; init; } = new();
-
     [StringLength(2000, ErrorMessage = "Content cannot exceed 2000 characters")]
     public string Content { get; init; } = string.Empty;
 
     [Range(0, int.MaxValue, ErrorMessage = "SessionDurationSeconds must be >= 0")]
     public int SessionDurationSeconds { get; init; } = 0;
-
-    [RegularExpression("^(scheduled|spontaneous)$", ErrorMessage = "EntryType must be 'scheduled' or 'spontaneous'")]
-    public string EntryType { get; init; } = "spontaneous";
 }
