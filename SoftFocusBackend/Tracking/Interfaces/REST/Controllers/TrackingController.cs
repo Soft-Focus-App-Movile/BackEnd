@@ -505,7 +505,7 @@ public class TrackingController : ControllerBase
     /// <summary>
     /// Deletes today's emotional calendar entries for the authenticated user
     /// </summary>
-    /// <param name="entryType">Optional entry type filter: spontaneous or scheduled</param>
+    /// <param name="entryType">Optional entry type filter: spontaneous, scheduled, or all. Defaults to spontaneous.</param>
     /// <returns>Deletion summary</returns>
     /// <response code="200">Entries deleted successfully</response>
     /// <response code="400">Invalid entry type</response>
@@ -513,14 +513,14 @@ public class TrackingController : ControllerBase
     [HttpDelete("emotional-calendar/today")]
     [SwaggerOperation(
         Summary = "Delete today's emotional calendar entries",
-        Description = "Deletes today's emotional calendar entries for the authenticated user. Optionally filters by entry type.",
+        Description = "Deletes today's emotional calendar entries for the authenticated user. Defaults to quick/spontaneous entries.",
         OperationId = "DeleteTodayEmotionalEntries",
         Tags = new[] { "Emotional Calendar" }
     )]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(object), StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> DeleteTodayEmotionalEntries([FromQuery] string? entryType = null)
+    public async Task<IActionResult> DeleteTodayEmotionalEntries([FromQuery] string? entryType = "spontaneous")
     {
         try
         {
@@ -530,22 +530,26 @@ public class TrackingController : ControllerBase
                 return Unauthorized(EmotionalCalendarResourceAssembler.ToErrorResponse("Invalid user session"));
             }
 
-            if (!string.IsNullOrWhiteSpace(entryType) &&
-                entryType != "spontaneous" &&
-                entryType != "scheduled")
+            var normalizedEntryType = string.IsNullOrWhiteSpace(entryType)
+                ? "spontaneous"
+                : entryType.Trim().ToLowerInvariant();
+
+            if (normalizedEntryType != "spontaneous" &&
+                normalizedEntryType != "scheduled" &&
+                normalizedEntryType != "all")
             {
-                return BadRequest(EmotionalCalendarResourceAssembler.ToErrorResponse("Invalid entryType. Use spontaneous or scheduled."));
+                return BadRequest(EmotionalCalendarResourceAssembler.ToErrorResponse("Invalid entryType. Use spontaneous, scheduled, or all."));
             }
 
             _logger.LogInformation(
                 "Delete today's emotional entries request for user: {UserId}, EntryType: {EntryType}",
                 userId,
-                entryType ?? "all");
+                normalizedEntryType);
 
             var entries = await _emotionalCalendarQueryService.HandleGetUserEntriesByDateAsync(userId, DateTime.UtcNow.Date);
-            var entriesToDelete = string.IsNullOrWhiteSpace(entryType)
+            var entriesToDelete = normalizedEntryType == "all"
                 ? entries
-                : entries.Where(entry => entry.EntryType == entryType).ToList();
+                : entries.Where(entry => entry.EntryType == normalizedEntryType).ToList();
 
             var deletedCount = 0;
             var failedCount = 0;
@@ -571,7 +575,7 @@ public class TrackingController : ControllerBase
                 deletedCount,
                 failedCount,
                 totalMatched = entriesToDelete.Count,
-                entryType = entryType ?? "all",
+                entryType = normalizedEntryType,
                 timestamp = DateTime.UtcNow
             });
         }
