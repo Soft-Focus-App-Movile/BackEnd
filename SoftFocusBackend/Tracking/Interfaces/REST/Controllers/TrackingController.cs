@@ -503,6 +503,87 @@ public class TrackingController : ControllerBase
     }
 
     /// <summary>
+    /// Deletes today's emotional calendar entries for the authenticated user
+    /// </summary>
+    /// <param name="entryType">Optional entry type filter: spontaneous or scheduled</param>
+    /// <returns>Deletion summary</returns>
+    /// <response code="200">Entries deleted successfully</response>
+    /// <response code="400">Invalid entry type</response>
+    /// <response code="401">User not authenticated</response>
+    [HttpDelete("emotional-calendar/today")]
+    [SwaggerOperation(
+        Summary = "Delete today's emotional calendar entries",
+        Description = "Deletes today's emotional calendar entries for the authenticated user. Optionally filters by entry type.",
+        OperationId = "DeleteTodayEmotionalEntries",
+        Tags = new[] { "Emotional Calendar" }
+    )]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> DeleteTodayEmotionalEntries([FromQuery] string? entryType = null)
+    {
+        try
+        {
+            var userId = GetCurrentUserId();
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                return Unauthorized(EmotionalCalendarResourceAssembler.ToErrorResponse("Invalid user session"));
+            }
+
+            if (!string.IsNullOrWhiteSpace(entryType) &&
+                entryType != "spontaneous" &&
+                entryType != "scheduled")
+            {
+                return BadRequest(EmotionalCalendarResourceAssembler.ToErrorResponse("Invalid entryType. Use spontaneous or scheduled."));
+            }
+
+            _logger.LogInformation(
+                "Delete today's emotional entries request for user: {UserId}, EntryType: {EntryType}",
+                userId,
+                entryType ?? "all");
+
+            var entries = await _emotionalCalendarQueryService.HandleGetUserEntriesByDateAsync(userId, DateTime.UtcNow.Date);
+            var entriesToDelete = string.IsNullOrWhiteSpace(entryType)
+                ? entries
+                : entries.Where(entry => entry.EntryType == entryType).ToList();
+
+            var deletedCount = 0;
+            var failedCount = 0;
+
+            foreach (var entry in entriesToDelete)
+            {
+                var deleted = await _emotionalCalendarCommandService
+                    .HandleDeleteEmotionalCalendarEntryAsync(new DeleteEmotionalCalendarEntryCommand(entry.Id));
+
+                if (deleted)
+                {
+                    deletedCount++;
+                }
+                else
+                {
+                    failedCount++;
+                }
+            }
+
+            return Ok(new
+            {
+                success = failedCount == 0,
+                deletedCount,
+                failedCount,
+                totalMatched = entriesToDelete.Count,
+                entryType = entryType ?? "all",
+                timestamp = DateTime.UtcNow
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting today's emotional entries");
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                EmotionalCalendarResourceAssembler.ToErrorResponse("An error occurred while deleting today's entries"));
+        }
+    }
+
+    /// <summary>
     /// Retrieves all emotional calendar entries for a specific date
     /// </summary>
     /// <param name="date">Date in YYYY-MM-DD format</param>
