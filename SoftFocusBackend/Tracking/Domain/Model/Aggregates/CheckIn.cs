@@ -1,3 +1,4 @@
+using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using SoftFocusBackend.Shared.Domain.Entities;
 using SoftFocusBackend.Tracking.Domain.Model.ValueObjects;
@@ -22,6 +23,7 @@ public class CheckIn : BaseEntity
     public string MoodDescription { get; set; } = string.Empty;
 
     [BsonElement("sleepHours")]
+    [BsonRepresentation(BsonType.Decimal128)]
     public decimal SleepHours { get; set; }
 
     [BsonElement("energyLevel")]
