@@ -68,6 +68,7 @@ public class TrackingDomainService : ITrackingDomainService
             throw new ArgumentException($"User is not active: {userId}");
         }
 
+        var completedAt = DateTime.UtcNow;
         var checkIn = new CheckIn
         {
             UserId = userId,
@@ -77,7 +78,8 @@ public class TrackingDomainService : ITrackingDomainService
             SleepHours = sleepHours,
             Symptoms = symptoms ?? new List<string>(),
             Notes = notes ?? string.Empty,
-            CompletedAt = DateTime.UtcNow
+            CompletedAt = completedAt,
+            Date = DateTime.SpecifyKind(completedAt.Date, DateTimeKind.Utc)
         };
 
         checkIn.ValidateForCreation();

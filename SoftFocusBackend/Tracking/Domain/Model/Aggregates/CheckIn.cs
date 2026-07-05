@@ -30,6 +30,9 @@ public class CheckIn : BaseEntity
     [BsonElement("completedAt")]
     public DateTime CompletedAt { get; set; }
 
+    [BsonElement("date")]
+    public DateTime Date { get; set; }
+
     public void UpdateEmotionalState(EmotionalLevel emotionalLevel, EnergyLevel energyLevel, 
         MoodDescription moodDescription)
     {
@@ -65,7 +68,8 @@ public class CheckIn : BaseEntity
 
     public bool IsCompletedToday()
     {
-        return CompletedAt.Date == DateTime.UtcNow.Date;
+        var checkInDate = Date == default ? CompletedAt.Date : Date.Date;
+        return checkInDate == DateTime.UtcNow.Date;
     }
 
     public void ValidateForCreation()
