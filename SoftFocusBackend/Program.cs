@@ -376,6 +376,11 @@ builder.Services.AddScoped<SoftFocusBackend.Therapy.Application.Internal.QuerySe
 builder.Services.AddScoped<SoftFocusBackend.Therapy.Application.Internal.QueryServices.PatientDirectoryQueryService>();
 builder.Services.AddScoped<SoftFocusBackend.Therapy.Application.Internal.OutboundServices.IPatientFacade, SoftFocusBackend.Therapy.Infrastructure.ACL.Services.PatientFacade>();
 
+builder.Services.AddScoped<SoftFocusBackend.Therapy.Domain.Repositories.IPatientTaskRepository,
+    SoftFocusBackend.Therapy.Infrastructure.Persistence.MongoDB.Repositories.MongoPatientTaskRepository>();
+builder.Services.AddScoped<SoftFocusBackend.Therapy.Application.Internal.CommandServices.PatientTaskCommandService>();
+builder.Services.AddScoped<SoftFocusBackend.Therapy.Application.Internal.QueryServices.PatientTaskQueryService>();
+
 builder.Services.AddScoped<SignalRChatService>();
 builder.Services.AddScoped<SignalRMessageDeliveryHandler>();
 
