@@ -9,6 +9,18 @@ public class EmotionalCalendar : BaseEntity
     [BsonElement("userId")]
     public string UserId { get; set; } = string.Empty;
 
+    [BsonElement("timestamp")]
+    public DateTime Timestamp { get; set; }
+
+    [BsonElement("entryType")]
+    public string EntryType { get; set; } = "spontaneous";
+
+    [BsonElement("sessionDurationSeconds")]
+    public int SessionDurationSeconds { get; set; } = 0;
+
+    [BsonElement("content")]
+    public string Content { get; set; } = string.Empty;
+
     [BsonElement("date")]
     public DateTime Date { get; set; }
 
@@ -69,5 +81,14 @@ public class EmotionalCalendar : BaseEntity
 
         if (string.IsNullOrWhiteSpace(EmotionalEmoji))
             throw new ArgumentException("Emotional emoji is required");
+
+        if (Timestamp > DateTime.UtcNow.AddMinutes(5))
+            throw new ArgumentException("Timestamp cannot be in the future");
+
+        if (EntryType != "scheduled" && EntryType != "spontaneous")
+            throw new ArgumentException("Entry type must be 'scheduled' or 'spontaneous'");
+
+        if (SessionDurationSeconds < 0)
+            throw new ArgumentException("Session duration cannot be negative");
     }
 }

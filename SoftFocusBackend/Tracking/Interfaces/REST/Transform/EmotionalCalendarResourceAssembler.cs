@@ -12,10 +12,14 @@ public static class EmotionalCalendarResourceAssembler
         {
             Id = entry.Id,
             UserId = entry.UserId,
+            Timestamp = entry.Timestamp,
             Date = entry.Date,
             EmotionalEmoji = entry.EmotionalEmoji,
             MoodLevel = entry.MoodLevel,
             EmotionalTags = entry.EmotionalTags,
+            Content = entry.Content,
+            SessionDurationSeconds = entry.SessionDurationSeconds,
+            EntryType = entry.EntryType,
             CreatedAt = entry.CreatedAt,
             UpdatedAt = entry.UpdatedAt
         };
@@ -30,10 +34,13 @@ public static class EmotionalCalendarResourceAssembler
     {
         return new CreateEmotionalCalendarEntryCommand(
             userId: userId,
-            date: resource.Date,
+            timestamp: resource.Timestamp,
             emotionalEmoji: resource.EmotionalEmoji,
             moodLevel: resource.MoodLevel,
-            emotionalTags: resource.EmotionalTags
+            emotionalTags: resource.EmotionalTags,
+            content: resource.Content,
+            sessionDurationSeconds: resource.SessionDurationSeconds,
+            entryType: resource.EntryType
         );
     }
 

@@ -37,24 +37,36 @@ public class EmotionalCalendarCommandService : IEmotionalCalendarCommandService
                 return null;
             }
 
-            if (await _trackingDomainService.HasUserEmotionalCalendarEntryForDateAsync(command.UserId, command.Date))
+            // Multiple entries per day are allowed (24h diary experiment):
+            // the previous one-entry-per-day restriction was removed.
+
+            if (command.Timestamp > DateTime.UtcNow.AddMinutes(5))
             {
-                _logger.LogWarning("User already has emotional calendar entry for date: {UserId} - {Date}", command.UserId, command.Date);
+                _logger.LogWarning("Timestamp cannot be in the future for user: {UserId} - {Timestamp}", command.UserId, command.Timestamp);
+                return null;
+            }
+
+            if (command.EntryType != "scheduled" && command.EntryType != "spontaneous")
+            {
+                _logger.LogWarning("Invalid entry type '{EntryType}' for user: {UserId}", command.EntryType, command.UserId);
                 return null;
             }
 
             var entry = await _trackingDomainService.CreateEmotionalCalendarEntryAsync(
                 command.UserId,
-                command.Date,
+                command.Timestamp,
                 command.EmotionalEmoji,
                 command.MoodLevel,
-                command.EmotionalTags);
+                command.EmotionalTags,
+                command.Content,
+                command.SessionDurationSeconds,
+                command.EntryType);
 
             await _emotionalCalendarRepository.AddAsync(entry);
 
             // Notify other bounded contexts about the emotional calendar entry
             await _trackingNotificationService.NotifyEmotionalCalendarEntryCreatedAsync(
-                command.UserId, entry.Id, command.Date, command.MoodLevel);
+                command.UserId, entry.Id, command.Timestamp, command.MoodLevel);
             
             await _trackingNotificationService.NotifyUserEngagementAsync(command.UserId, "EmotionalCalendarEntry");
 

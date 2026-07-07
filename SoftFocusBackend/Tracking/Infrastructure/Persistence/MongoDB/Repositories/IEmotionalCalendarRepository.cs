@@ -8,4 +8,6 @@ public interface IEmotionalCalendarRepository : IBaseRepository<EmotionalCalenda
     Task<EmotionalCalendar?> FindByUserIdAndDateAsync(string userId, DateTime date);
     Task<List<EmotionalCalendar>> FindByUserIdAsync(string userId, int pageNumber = 1, int pageSize = 30);
     Task<List<EmotionalCalendar>> FindByUserIdAndDateRangeAsync(string userId, DateTime startDate, DateTime endDate);
+    Task<List<EmotionalCalendar>> GetUserEntriesByDateAsync(string userId, DateTime date);
+    Task<List<EmotionalCalendar>> GetUserEntriesByHourAsync(string userId, DateTime dateTime);
 }

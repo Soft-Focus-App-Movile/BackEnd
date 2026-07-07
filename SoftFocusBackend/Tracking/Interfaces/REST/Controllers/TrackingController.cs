@@ -353,7 +353,12 @@ public class TrackingController : ControllerBase
                 return BadRequest(EmotionalCalendarResourceAssembler.ToErrorResponse("Invalid request data"));
             }
 
-            _logger.LogInformation("Create emotional calendar entry request for user: {UserId}, Date: {Date}", userId, resource.Date);
+            if (resource.SessionDurationSeconds < 0)
+            {
+                return BadRequest(EmotionalCalendarResourceAssembler.ToErrorResponse("SessionDurationSeconds must be >= 0"));
+            }
+
+            _logger.LogInformation("Create emotional calendar entry request for user: {UserId}, Timestamp: {Timestamp}", userId, resource.Timestamp);
 
             var command = EmotionalCalendarResourceAssembler.ToCreateCommand(resource, userId);
             var entry = await _emotionalCalendarCommandService.HandleCreateEmotionalCalendarEntryAsync(command);
@@ -361,13 +366,17 @@ public class TrackingController : ControllerBase
             if (entry == null)
             {
                 _logger.LogWarning("Failed to create emotional calendar entry for user: {UserId}", userId);
-                return BadRequest(EmotionalCalendarResourceAssembler.ToErrorResponse("Failed to create calendar entry. An entry may already exist for this date."));
+                return BadRequest(EmotionalCalendarResourceAssembler.ToErrorResponse("Failed to create calendar entry. Please verify the request data."));
             }
 
             var response = EmotionalCalendarResourceAssembler.ToResource(entry);
-            return CreatedAtAction(nameof(GetEmotionalCalendarEntryByDate), 
-                new { date = entry.Date.ToString("yyyy-MM-dd") },
+            return StatusCode(StatusCodes.Status201Created,
                 EmotionalCalendarResourceAssembler.ToSuccessResponse(response, "Emotional calendar entry created successfully"));
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "Invalid emotional calendar entry request");
+            return BadRequest(EmotionalCalendarResourceAssembler.ToErrorResponse(ex.Message));
         }
         catch (Exception ex)
         {
@@ -378,24 +387,225 @@ public class TrackingController : ControllerBase
     }
 
     /// <summary>
-    /// Retrieves emotional calendar entry for a specific date
+    /// Creates a quick (spontaneous) emotional calendar entry
     /// </summary>
-    /// <param name="date">Date in YYYY-MM-DD format</param>
-    /// <returns>Emotional calendar entry for the specified date</returns>
-    /// <response code="200">Calendar entry found and returned</response>
-    /// <response code="404">No entry found for the specified date</response>
+    /// <param name="resource">Quick entry data: timestamp, emoji, mood level and optional content</param>
+    /// <returns>Created emotional calendar entry</returns>
+    /// <response code="201">Quick entry created successfully</response>
+    /// <response code="400">Invalid request data</response>
     /// <response code="401">User not authenticated</response>
-    [HttpGet("emotional-calendar/{date}")]
+    [HttpPost("emotional-calendar/quick")]
     [SwaggerOperation(
-        Summary = "Get emotional calendar entry by date",
-        Description = "Retrieves the emotional calendar entry for a specific date. Users can only access their own entries.",
-        OperationId = "GetEmotionalCalendarEntryByDate",
+        Summary = "Create quick emotional entry",
+        Description = "Creates a spontaneous emotional calendar entry with minimal data. Multiple entries per day are allowed.",
+        OperationId = "CreateQuickEmotionalEntry",
         Tags = new[] { "Emotional Calendar" }
     )]
-    [ProducesResponseType(typeof(EmotionalCalendarResource), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(object), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(object), StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> GetEmotionalCalendarEntryByDate([FromRoute] string date)
+    public async Task<IActionResult> CreateQuickEmotionalEntry([FromBody] CreateQuickEmotionalEntryResource resource)
+    {
+        try
+        {
+            var userId = GetCurrentUserId();
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                return Unauthorized(EmotionalCalendarResourceAssembler.ToErrorResponse("Invalid user session"));
+            }
+
+            if (!ModelState.IsValid)
+            {
+                _logger.LogWarning("Invalid quick emotional entry request for user: {UserId}", userId);
+                return BadRequest(EmotionalCalendarResourceAssembler.ToErrorResponse("Invalid request data"));
+            }
+
+            if (resource.SessionDurationSeconds < 0)
+            {
+                return BadRequest(EmotionalCalendarResourceAssembler.ToErrorResponse("SessionDurationSeconds must be >= 0"));
+            }
+
+            _logger.LogInformation("Create quick emotional entry request for user: {UserId}, Timestamp: {Timestamp}", userId, resource.Timestamp);
+
+            var command = new CreateEmotionalCalendarEntryCommand(
+                userId: userId,
+                timestamp: resource.Timestamp,
+                emotionalEmoji: resource.EmotionalEmoji,
+                moodLevel: resource.MoodLevel,
+                emotionalTags: new List<string>(),
+                content: resource.Content,
+                sessionDurationSeconds: resource.SessionDurationSeconds,
+                entryType: "spontaneous");
+
+            var entry = await _emotionalCalendarCommandService.HandleCreateEmotionalCalendarEntryAsync(command);
+
+            if (entry == null)
+            {
+                _logger.LogWarning("Failed to create quick emotional entry for user: {UserId}", userId);
+                return BadRequest(EmotionalCalendarResourceAssembler.ToErrorResponse("Failed to create quick entry. Please verify the request data."));
+            }
+
+            var response = EmotionalCalendarResourceAssembler.ToResource(entry);
+            return StatusCode(StatusCodes.Status201Created,
+                EmotionalCalendarResourceAssembler.ToSuccessResponse(response, "Quick emotional entry created successfully"));
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "Invalid quick emotional entry request");
+            return BadRequest(EmotionalCalendarResourceAssembler.ToErrorResponse(ex.Message));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating quick emotional entry");
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                EmotionalCalendarResourceAssembler.ToErrorResponse("An error occurred while creating quick entry"));
+        }
+    }
+
+    /// <summary>
+    /// Retrieves all emotional calendar entries for today
+    /// </summary>
+    /// <returns>List of today's emotional calendar entries for the authenticated user</returns>
+    /// <response code="200">Entries retrieved successfully</response>
+    /// <response code="401">User not authenticated</response>
+    [HttpGet("emotional-calendar/today")]
+    [SwaggerOperation(
+        Summary = "Get today's emotional calendar entries",
+        Description = "Retrieves all emotional calendar entries created today by the authenticated user (multiple entries per day are allowed).",
+        OperationId = "GetTodayEmotionalEntries",
+        Tags = new[] { "Emotional Calendar" }
+    )]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GetTodayEmotionalEntries()
+    {
+        try
+        {
+            var userId = GetCurrentUserId();
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                return Unauthorized(EmotionalCalendarResourceAssembler.ToErrorResponse("Invalid user session"));
+            }
+
+            _logger.LogInformation("Get today's emotional entries request for user: {UserId}", userId);
+
+            var entries = await _emotionalCalendarQueryService.HandleGetUserEntriesByDateAsync(userId, DateTime.UtcNow.Date);
+
+            var resources = EmotionalCalendarResourceAssembler.ToResourceList(entries);
+            return Ok(new { success = true, entries = resources, totalCount = resources.Count, timestamp = DateTime.UtcNow });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting today's emotional entries");
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                EmotionalCalendarResourceAssembler.ToErrorResponse("An error occurred while retrieving today's entries"));
+        }
+    }
+
+    /// <summary>
+    /// Deletes today's emotional calendar entries for the authenticated user
+    /// </summary>
+    /// <param name="entryType">Optional entry type filter: spontaneous, scheduled, or all. Defaults to spontaneous.</param>
+    /// <returns>Deletion summary</returns>
+    /// <response code="200">Entries deleted successfully</response>
+    /// <response code="400">Invalid entry type</response>
+    /// <response code="401">User not authenticated</response>
+    [HttpDelete("emotional-calendar/today")]
+    [SwaggerOperation(
+        Summary = "Delete today's emotional calendar entries",
+        Description = "Deletes today's emotional calendar entries for the authenticated user. Defaults to quick/spontaneous entries.",
+        OperationId = "DeleteTodayEmotionalEntries",
+        Tags = new[] { "Emotional Calendar" }
+    )]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> DeleteTodayEmotionalEntries([FromQuery] string? entryType = "spontaneous")
+    {
+        try
+        {
+            var userId = GetCurrentUserId();
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                return Unauthorized(EmotionalCalendarResourceAssembler.ToErrorResponse("Invalid user session"));
+            }
+
+            var normalizedEntryType = string.IsNullOrWhiteSpace(entryType)
+                ? "spontaneous"
+                : entryType.Trim().ToLowerInvariant();
+
+            if (normalizedEntryType != "spontaneous" &&
+                normalizedEntryType != "scheduled" &&
+                normalizedEntryType != "all")
+            {
+                return BadRequest(EmotionalCalendarResourceAssembler.ToErrorResponse("Invalid entryType. Use spontaneous, scheduled, or all."));
+            }
+
+            _logger.LogInformation(
+                "Delete today's emotional entries request for user: {UserId}, EntryType: {EntryType}",
+                userId,
+                normalizedEntryType);
+
+            var entries = await _emotionalCalendarQueryService.HandleGetUserEntriesByDateAsync(userId, DateTime.UtcNow.Date);
+            var entriesToDelete = normalizedEntryType == "all"
+                ? entries
+                : entries.Where(entry => entry.EntryType == normalizedEntryType).ToList();
+
+            var deletedCount = 0;
+            var failedCount = 0;
+
+            foreach (var entry in entriesToDelete)
+            {
+                var deleted = await _emotionalCalendarCommandService
+                    .HandleDeleteEmotionalCalendarEntryAsync(new DeleteEmotionalCalendarEntryCommand(entry.Id));
+
+                if (deleted)
+                {
+                    deletedCount++;
+                }
+                else
+                {
+                    failedCount++;
+                }
+            }
+
+            return Ok(new
+            {
+                success = failedCount == 0,
+                deletedCount,
+                failedCount,
+                totalMatched = entriesToDelete.Count,
+                entryType = normalizedEntryType,
+                timestamp = DateTime.UtcNow
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting today's emotional entries");
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                EmotionalCalendarResourceAssembler.ToErrorResponse("An error occurred while deleting today's entries"));
+        }
+    }
+
+    /// <summary>
+    /// Retrieves all emotional calendar entries for a specific date
+    /// </summary>
+    /// <param name="date">Date in YYYY-MM-DD format</param>
+    /// <returns>List of emotional calendar entries for the specified date</returns>
+    /// <response code="200">Entries retrieved successfully</response>
+    /// <response code="400">Invalid date format</response>
+    /// <response code="401">User not authenticated</response>
+    [HttpGet("emotional-calendar/date/{date}")]
+    [SwaggerOperation(
+        Summary = "Get emotional calendar entries by date",
+        Description = "Retrieves all emotional calendar entries for a specific date (multiple entries per day are allowed).",
+        OperationId = "GetEmotionalEntriesByDate",
+        Tags = new[] { "Emotional Calendar" }
+    )]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GetEmotionalEntriesByDate([FromRoute] string date)
     {
         try
         {
@@ -410,27 +620,20 @@ public class TrackingController : ControllerBase
                 return BadRequest(EmotionalCalendarResourceAssembler.ToErrorResponse("Invalid date format. Use YYYY-MM-DD."));
             }
 
-            // Normalize to UTC date only
             parsedDate = DateTime.SpecifyKind(parsedDate.Date, DateTimeKind.Utc);
 
-            _logger.LogInformation("Get emotional calendar entry request for user: {UserId}, Date: {Date}, ParsedDate: {ParsedDate}", userId, date, parsedDate);
+            _logger.LogInformation("Get emotional entries by date request for user: {UserId}, Date: {Date}", userId, parsedDate);
 
-            var query = new GetEmotionalCalendarEntryByDateQuery(userId, parsedDate);
-            var entry = await _emotionalCalendarQueryService.HandleGetEmotionalCalendarEntryByDateAsync(query);
+            var entries = await _emotionalCalendarQueryService.HandleGetUserEntriesByDateAsync(userId, parsedDate);
 
-            if (entry == null)
-            {
-                return NotFound(EmotionalCalendarResourceAssembler.ToErrorResponse("No calendar entry found for this date"));
-            }
-
-            var response = EmotionalCalendarResourceAssembler.ToResource(entry);
-            return Ok(response);
+            var resources = EmotionalCalendarResourceAssembler.ToResourceList(entries);
+            return Ok(new { success = true, entries = resources, totalCount = resources.Count, timestamp = DateTime.UtcNow });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting emotional calendar entry by date: {Date}", date);
+            _logger.LogError(ex, "Error getting emotional entries by date: {Date}", date);
             return StatusCode(StatusCodes.Status500InternalServerError,
-                EmotionalCalendarResourceAssembler.ToErrorResponse("An error occurred while retrieving calendar entry"));
+                EmotionalCalendarResourceAssembler.ToErrorResponse("An error occurred while retrieving entries"));
         }
     }
 
