@@ -32,51 +32,70 @@ public class SpotifyMusicService : ISpotifyService
         _logger = logger;
     }
 
+    // As of the Feb 2026 Spotify Developer Mode changes, /search caps "limit" at 10 per request.
+    // Larger requests are fulfilled by paginating with "offset" across multiple calls.
+    private const int MaxSearchLimitPerRequest = 10;
+
     public async Task<List<ContentItem>> SearchTracksAsync(string query, int limit = 20)
     {
         try
         {
             await EnsureValidTokenAsync();
 
-            // Add random offset to get varied results (Spotify allows offset up to 1000)
-            var random = new Random();
-            var offset = random.Next(0, 50); // Offset 0-49 to get variety while maintaining quality
-
-            var url = $"{_settings.BaseUrl}/search?q={Uri.EscapeDataString(query)}&type=track&market=PE&limit={limit}&offset={offset}";
-
-            _logger.LogInformation("Spotify: Searching with query '{Query}', offset {Offset}", query, offset);
             _logger.LogInformation("Spotify: Using access token: {Token}",
                 string.IsNullOrEmpty(_accessToken) ? "NULL" : $"{_accessToken[..10]}...");
 
-            var request = new HttpRequestMessage(HttpMethod.Get, url);
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);
-
-            var response = await _httpClient.SendAsync(request);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                var errorContent = await response.Content.ReadAsStringAsync();
-                _logger.LogWarning("Spotify API error: {StatusCode}, Response: {ErrorContent}",
-                    response.StatusCode, errorContent);
-                return new List<ContentItem>();
-            }
-
-            var content = await response.Content.ReadAsStringAsync();
-            var result = JsonSerializer.Deserialize<SpotifySearchResponse>(content, new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            });
-
-            if (result?.Tracks?.Items == null)
-                return new List<ContentItem>();
+            // Add random starting offset to get varied results (Spotify allows offset up to 1000)
+            var random = new Random();
+            var offset = random.Next(0, 50); // Offset 0-49 to get variety while maintaining quality
 
             var tracks = new List<ContentItem>();
 
-            foreach (var track in result.Tracks.Items.Take(limit))
+            while (tracks.Count < limit)
             {
-                var contentItem = ConvertTrackToContentItem(track);
-                if (contentItem != null)
-                    tracks.Add(contentItem);
+                var batchSize = Math.Min(MaxSearchLimitPerRequest, limit - tracks.Count);
+                var url = $"{_settings.BaseUrl}/search?q={Uri.EscapeDataString(query)}&type=track&market=PE&limit={batchSize}&offset={offset}";
+
+                _logger.LogInformation("Spotify: Searching with query '{Query}', offset {Offset}, batchSize {BatchSize}",
+                    query, offset, batchSize);
+
+                var request = new HttpRequestMessage(HttpMethod.Get, url);
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);
+
+                var response = await _httpClient.SendAsync(request);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    _logger.LogWarning("Spotify API error: {StatusCode}, Response: {ErrorContent}",
+                        response.StatusCode, errorContent);
+                    break;
+                }
+
+                var content = await response.Content.ReadAsStringAsync();
+                var result = JsonSerializer.Deserialize<SpotifySearchResponse>(content, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+
+                var items = result?.Tracks?.Items;
+                if (items == null || items.Count == 0)
+                    break;
+
+                foreach (var track in items)
+                {
+                    if (tracks.Count >= limit)
+                        break;
+
+                    var contentItem = ConvertTrackToContentItem(track);
+                    if (contentItem != null)
+                        tracks.Add(contentItem);
+                }
+
+                if (items.Count < batchSize)
+                    break; // Spotify ran out of results for this query
+
+                offset += batchSize;
             }
 
             return tracks;
