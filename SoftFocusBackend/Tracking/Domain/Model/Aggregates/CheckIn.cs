@@ -1,3 +1,4 @@
+using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using SoftFocusBackend.Shared.Domain.Entities;
 using SoftFocusBackend.Tracking.Domain.Model.ValueObjects;
@@ -22,6 +23,7 @@ public class CheckIn : BaseEntity
     public string MoodDescription { get; set; } = string.Empty;
 
     [BsonElement("sleepHours")]
+    [BsonRepresentation(BsonType.Decimal128)]
     public decimal SleepHours { get; set; }
 
     [BsonElement("energyLevel")]
@@ -29,6 +31,9 @@ public class CheckIn : BaseEntity
 
     [BsonElement("completedAt")]
     public DateTime CompletedAt { get; set; }
+
+    [BsonElement("date")]
+    public DateTime Date { get; set; }
 
     public void UpdateEmotionalState(EmotionalLevel emotionalLevel, EnergyLevel energyLevel, 
         MoodDescription moodDescription)
@@ -65,7 +70,8 @@ public class CheckIn : BaseEntity
 
     public bool IsCompletedToday()
     {
-        return CompletedAt.Date == DateTime.UtcNow.Date;
+        var checkInDate = Date == default ? CompletedAt.Date : Date.Date;
+        return checkInDate == DateTime.UtcNow.Date;
     }
 
     public void ValidateForCreation()

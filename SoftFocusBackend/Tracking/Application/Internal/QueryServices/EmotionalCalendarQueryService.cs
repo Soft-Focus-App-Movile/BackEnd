@@ -89,4 +89,28 @@ public class EmotionalCalendarQueryService : IEmotionalCalendarQueryService
             return new List<EmotionalCalendar>();
         }
     }
+
+    public async Task<List<EmotionalCalendar>> HandleGetUserEntriesByDateAsync(string userId, DateTime date)
+    {
+        try
+        {
+            _logger.LogInformation("Processing get user entries by date query for user: {UserId}, Date: {Date}", userId, date);
+
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                _logger.LogWarning("Invalid get user entries by date query: empty user id");
+                return new List<EmotionalCalendar>();
+            }
+
+            var entries = await _emotionalCalendarRepository.GetUserEntriesByDateAsync(userId, date);
+
+            _logger.LogInformation("User entries by date query completed for user: {UserId} - Count: {Count}", userId, entries.Count);
+            return entries;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting user entries by date for user: {UserId}", userId);
+            return new List<EmotionalCalendar>();
+        }
+    }
 }

@@ -8,8 +8,9 @@ public interface ITrackingDomainService
     Task<bool> HasUserEmotionalCalendarEntryForDateAsync(string userId, DateTime date);
     Task<CheckIn> CreateCheckInAsync(string userId, int emotionalLevel, int energyLevel, 
         string moodDescription, decimal sleepHours, List<string> symptoms, string notes);
-    Task<EmotionalCalendar> CreateEmotionalCalendarEntryAsync(string userId, DateTime date, 
-        string emotionalEmoji, int moodLevel, List<string> emotionalTags);
+    Task<EmotionalCalendar> CreateEmotionalCalendarEntryAsync(string userId, DateTime timestamp,
+        string emotionalEmoji, int moodLevel, List<string> emotionalTags,
+        string content = "", int sessionDurationSeconds = 0, string entryType = "spontaneous");
     Task<bool> CanCheckInBeDeletedAsync(string checkInId);
     Task<bool> CanEmotionalCalendarEntryBeDeletedAsync(string entryId);
 }

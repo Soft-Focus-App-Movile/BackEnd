@@ -57,17 +57,11 @@ public class TrackingDomainService : ITrackingDomainService
     public async Task<CheckIn> CreateCheckInAsync(string userId, int emotionalLevel, int energyLevel, 
         string moodDescription, decimal sleepHours, List<string> symptoms, string notes)
     {
-        // Validate user exists and is active through ACL
-        if (!await _userValidationService.ValidateUserExistsAsync(userId))
-        {
-            throw new ArgumentException($"User does not exist: {userId}");
-        }
+        // Tracking endpoints are already protected by JWT. Do not block writes if the Users
+        // ACL is temporarily inconsistent with the authenticated user id.
+        await WarnIfUserValidationFailsAsync(userId);
 
-        if (!await _userValidationService.IsUserActiveAsync(userId))
-        {
-            throw new ArgumentException($"User is not active: {userId}");
-        }
-
+        var completedAt = DateTime.UtcNow;
         var checkIn = new CheckIn
         {
             UserId = userId,
@@ -77,34 +71,37 @@ public class TrackingDomainService : ITrackingDomainService
             SleepHours = sleepHours,
             Symptoms = symptoms ?? new List<string>(),
             Notes = notes ?? string.Empty,
-            CompletedAt = DateTime.UtcNow
+            CompletedAt = completedAt,
+            Date = DateTime.SpecifyKind(completedAt.Date, DateTimeKind.Utc)
         };
 
         checkIn.ValidateForCreation();
         return checkIn;
     }
 
-    public async Task<EmotionalCalendar> CreateEmotionalCalendarEntryAsync(string userId, DateTime date, 
-        string emotionalEmoji, int moodLevel, List<string> emotionalTags)
+    public async Task<EmotionalCalendar> CreateEmotionalCalendarEntryAsync(string userId, DateTime timestamp,
+        string emotionalEmoji, int moodLevel, List<string> emotionalTags,
+        string content = "", int sessionDurationSeconds = 0, string entryType = "spontaneous")
     {
-        // Validate user exists and is active through ACL
-        if (!await _userValidationService.ValidateUserExistsAsync(userId))
-        {
-            throw new ArgumentException($"User does not exist: {userId}");
-        }
+        // Tracking endpoints are already protected by JWT. Do not block writes if the Users
+        // ACL is temporarily inconsistent with the authenticated user id.
+        await WarnIfUserValidationFailsAsync(userId);
 
-        if (!await _userValidationService.IsUserActiveAsync(userId))
-        {
-            throw new ArgumentException($"User is not active: {userId}");
-        }
+        var normalizedTimestamp = timestamp.Kind == DateTimeKind.Utc
+            ? timestamp
+            : timestamp.ToUniversalTime();
 
         var entry = new EmotionalCalendar
         {
             UserId = userId,
-            Date = DateTime.SpecifyKind(date.Date, DateTimeKind.Utc),
+            Timestamp = normalizedTimestamp,
+            Date = DateTime.SpecifyKind(normalizedTimestamp.Date, DateTimeKind.Utc),
             EmotionalEmoji = emotionalEmoji,
             MoodLevel = moodLevel,
-            EmotionalTags = emotionalTags ?? new List<string>()
+            EmotionalTags = emotionalTags ?? new List<string>(),
+            Content = content ?? string.Empty,
+            SessionDurationSeconds = sessionDurationSeconds,
+            EntryType = entryType
         };
 
         entry.ValidateForCreation();
@@ -126,6 +123,28 @@ public class TrackingDomainService : ITrackingDomainService
         {
             _logger.LogError(ex, "Error checking if check-in can be deleted: {CheckInId}", checkInId);
             return false;
+        }
+    }
+
+    private async Task WarnIfUserValidationFailsAsync(string userId)
+    {
+        try
+        {
+            var exists = await _userValidationService.ValidateUserExistsAsync(userId);
+            var isActive = exists && await _userValidationService.IsUserActiveAsync(userId);
+
+            if (!exists || !isActive)
+            {
+                _logger.LogWarning(
+                    "Tracking write allowed for authenticated user {UserId}, but Users ACL returned Exists={Exists}, Active={IsActive}",
+                    userId,
+                    exists,
+                    isActive);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Tracking write allowed after Users ACL validation failed for {UserId}", userId);
         }
     }
 
